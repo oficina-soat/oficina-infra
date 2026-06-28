@@ -31,3 +31,4 @@ Este inventário registra a cópia controlada de artefatos de `oficina-infra-db`
 - Adicionar DynamoDB do `oficina-execution-service`.
 - Adicionar mensageria, filas, assinaturas e DLQs da Fase 4.
 - Definir rotas reais do API Gateway quando os endpoints dos microsserviços estiverem publicados.
+- Importar/adotar o RDS existente no state do `oficina-infra` quando as credenciais AWS do laboratório estiverem renovadas.

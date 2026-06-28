@@ -60,3 +60,15 @@ scripts/manual/bootstrap-service-databases.sh
 O script lê `db_endpoint`, `db_port`, `db_username` e `db_master_user_secret_arn` dos outputs Terraform quando as variáveis equivalentes não forem informadas.
 
 O deploy automatizado executa o mesmo bootstrap por [scripts/actions/ci-deploy.sh](../scripts/actions/ci-deploy.sh), desde que `BOOTSTRAP_SERVICE_DATABASES=true`.
+
+## Adoção do RDS existente
+
+Quando o RDS `oficina-postgres-lab` já existir no state legado de `oficina-infra-db`, não execute um `apply` direto com state vazio. Primeiro importe os recursos existentes para o state do `oficina-infra`:
+
+```bash
+TF_STATE_BUCKET=<bucket-state> TERRAFORM_ACTION=plan scripts/actions/ci-terraform.sh
+scripts/manual/import-existing-rds.sh
+terraform -chdir=terraform/environments/lab plan
+```
+
+O script [scripts/manual/import-existing-rds.sh](../scripts/manual/import-existing-rds.sh) usa os identificadores atuais do ambiente `lab` extraídos do state legado e pode receber overrides por variável de ambiente.

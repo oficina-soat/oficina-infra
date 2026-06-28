@@ -9,18 +9,18 @@ locals {
 }
 
 resource "aws_db_subnet_group" "this" {
-  name        = "${local.name_prefix}-subnets"
+  name        = "${local.name_prefix}-subnet-group"
   description = "Subnets do RDS PostgreSQL compartilhado ${var.db_identifier}"
   subnet_ids  = var.subnet_ids
 
   tags = merge(local.common_tags, {
-    Name = "${local.name_prefix}-subnets"
+    Name = "${local.name_prefix}-subnet-group"
   })
 }
 
 resource "aws_security_group" "this" {
   name        = "${local.name_prefix}-sg"
-  description = "Acesso PostgreSQL para ${var.db_identifier}"
+  description = "Acesso ao PostgreSQL gerenciado da Oficina"
   vpc_id      = var.vpc_id
 
   tags = merge(local.common_tags, {
@@ -28,38 +28,32 @@ resource "aws_security_group" "this" {
   })
 }
 
-resource "aws_security_group_rule" "ingress_sg" {
+resource "aws_vpc_security_group_ingress_rule" "from_security_groups" {
   for_each = toset(var.allowed_security_group_ids)
 
-  type                     = "ingress"
-  from_port                = local.db_port
-  to_port                  = local.db_port
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.this.id
-  source_security_group_id = each.value
-  description              = "PostgreSQL de security group autorizado"
+  security_group_id            = aws_security_group.this.id
+  referenced_security_group_id = each.value
+  ip_protocol                  = "tcp"
+  from_port                    = local.db_port
+  to_port                      = local.db_port
+  description                  = "PostgreSQL a partir do security group ${each.value}"
 }
 
-resource "aws_security_group_rule" "ingress_cidr" {
+resource "aws_vpc_security_group_ingress_rule" "from_cidrs" {
   for_each = toset(var.allowed_cidr_blocks)
 
-  type              = "ingress"
+  security_group_id = aws_security_group.this.id
+  cidr_ipv4         = each.value
+  ip_protocol       = "tcp"
   from_port         = local.db_port
   to_port           = local.db_port
-  protocol          = "tcp"
-  security_group_id = aws_security_group.this.id
-  cidr_blocks       = [each.value]
-  description       = "PostgreSQL de CIDR autorizado"
+  description       = "PostgreSQL a partir do CIDR ${each.value}"
 }
 
-resource "aws_security_group_rule" "egress" {
-  type              = "egress"
-  from_port         = 0
-  to_port           = 0
-  protocol          = "-1"
+resource "aws_vpc_security_group_egress_rule" "this" {
   security_group_id = aws_security_group.this.id
-  cidr_blocks       = ["0.0.0.0/0"]
-  description       = "Egress padrao"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
 }
 
 resource "aws_cloudwatch_log_group" "this" {
@@ -74,7 +68,7 @@ resource "aws_cloudwatch_log_group" "this" {
 resource "aws_db_parameter_group" "this" {
   name        = "${local.name_prefix}-pg"
   family      = "postgres${local.engine_major_version}"
-  description = "Parametros PostgreSQL para ${var.db_identifier}"
+  description = "Parametros PostgreSQL de producao para ${var.db_identifier}"
 
   parameter {
     name         = "rds.force_ssl"
