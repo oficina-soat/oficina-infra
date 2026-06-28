@@ -1,0 +1,17 @@
+region            = "us-east-1"
+environment       = "lab"
+shared_infra_name = "eks-lab"
+
+db_identifier = "oficina-postgres-lab"
+db_username   = "oficina_master"
+
+vpc_id     = "vpc-xxxxxxxxxxxxxxxxx"
+subnet_ids = ["subnet-xxxxxxxxxxxxxxxxx", "subnet-yyyyyyyyyyyyyyyyy"]
+
+allowed_security_group_ids = ["sg-xxxxxxxxxxxxxxxxx"]
+allowed_cidr_blocks       = []
+
+instance_class            = "db.t4g.micro"
+deletion_protection       = true
+skip_final_snapshot       = false
+final_snapshot_identifier = "oficina-postgres-lab-final"
