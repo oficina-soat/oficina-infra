@@ -16,6 +16,36 @@ variable "shared_infra_name" {
   default     = "eks-lab"
 }
 
+variable "create_network_if_missing" {
+  type        = bool
+  description = "Quando true, cria uma VPC publica minima para o lab quando vpc_id nao for informado."
+  default     = true
+}
+
+variable "network_vpc_cidr" {
+  type        = string
+  description = "CIDR da VPC criada automaticamente quando create_network_if_missing=true."
+  default     = "10.0.0.0/16"
+}
+
+variable "azs" {
+  type        = list(string)
+  description = "Availability zones usadas pela VPC. Se vazio, usa duas zonas derivadas da regiao."
+  default     = []
+}
+
+variable "public_subnet_cidrs" {
+  type        = list(string)
+  description = "CIDRs das subnets publicas quando a rede for criada pelo Terraform."
+  default     = ["10.0.0.0/20", "10.0.16.0/20"]
+}
+
+variable "create_rds" {
+  type        = bool
+  description = "Quando true, cria a instancia RDS PostgreSQL compartilhada."
+  default     = true
+}
+
 variable "db_identifier" {
   type        = string
   description = "Identificador da instancia RDS PostgreSQL compartilhada."
@@ -30,13 +60,13 @@ variable "db_username" {
 
 variable "vpc_id" {
   type        = string
-  description = "VPC do EKS compartilhado. Informe via terraform.tfvars ou -var."
+  description = "VPC do ambiente lab. Se nulo, pode ser criada pelo modulo network."
   default     = null
 }
 
 variable "subnet_ids" {
   type        = list(string)
-  description = "Subnets para o RDS. Informe pelo menos duas via terraform.tfvars ou -var."
+  description = "Subnets do ambiente lab. Se vazia, usa as subnets criadas pelo modulo network."
   default     = []
 }
 
@@ -50,6 +80,230 @@ variable "allowed_cidr_blocks" {
   type        = list(string)
   description = "CIDRs autorizados a conectar no RDS para bootstrap ou acesso operacional controlado."
   default     = []
+}
+
+variable "create_eks" {
+  type        = bool
+  description = "Quando true, cria o cluster EKS compartilhado."
+  default     = false
+}
+
+variable "cluster_name" {
+  type        = string
+  description = "Nome do cluster EKS compartilhado."
+  default     = "eks-lab"
+}
+
+variable "kubernetes_version" {
+  type        = string
+  description = "Versao do Kubernetes a ser usada pelo cluster EKS."
+  default     = "1.35"
+}
+
+variable "eks_cluster_role_arn" {
+  type        = string
+  description = "ARN da role existente usada pelo control plane do EKS."
+  default     = null
+}
+
+variable "eks_node_role_arn" {
+  type        = string
+  description = "ARN da role existente usada pelos nodes do EKS."
+  default     = null
+}
+
+variable "eks_access_principal_arn" {
+  type        = string
+  description = "Principal que recebe acesso administrativo ao cluster. Se nulo, o modulo tenta usar a identidade atual."
+  default     = null
+}
+
+variable "cluster_endpoint_public_access_cidrs" {
+  type        = list(string)
+  description = "CIDRs permitidos para acessar o endpoint publico do EKS."
+  default     = ["0.0.0.0/0"]
+}
+
+variable "instance_type" {
+  type        = string
+  description = "Tipo de instancia do managed node group."
+  default     = "t3.medium"
+}
+
+variable "node_capacity_type" {
+  type        = string
+  description = "Tipo de capacidade do node group."
+  default     = "ON_DEMAND"
+}
+
+variable "node_ami_type" {
+  type        = string
+  description = "AMI do managed node group."
+  default     = "AL2023_x86_64_STANDARD"
+}
+
+variable "desired_size" {
+  type        = number
+  description = "Quantidade desejada de nodes."
+  default     = 1
+}
+
+variable "min_size" {
+  type        = number
+  description = "Quantidade minima de nodes."
+  default     = 1
+}
+
+variable "max_size" {
+  type        = number
+  description = "Quantidade maxima de nodes."
+  default     = 1
+}
+
+variable "create_ecr_repositories" {
+  type        = bool
+  description = "Quando true, cria repositorios ECR canonicos dos microsservicos."
+  default     = true
+}
+
+variable "ecr_repository_names" {
+  type        = set(string)
+  description = "Repositorios ECR dos microsservicos."
+  default = [
+    "oficina-os-service",
+    "oficina-billing-service",
+    "oficina-execution-service",
+  ]
+}
+
+variable "ecr_force_delete" {
+  type        = bool
+  description = "Quando true, permite destruir repositorios ECR mesmo com imagens."
+  default     = false
+}
+
+variable "create_api_gateway" {
+  type        = bool
+  description = "Quando true, cria o API Gateway HTTP compartilhado."
+  default     = true
+}
+
+variable "api_gateway_name" {
+  type        = string
+  description = "Nome do API Gateway. Se nulo, usa eks-lab-http-api."
+  default     = null
+}
+
+variable "api_gateway_stage_name" {
+  type        = string
+  description = "Nome do stage publicado automaticamente."
+  default     = "$default"
+}
+
+variable "api_gateway_http_routes" {
+  type = map(object({
+    integration_uri      = string
+    integration_method   = optional(string, "ANY")
+    authorization_type   = optional(string, "NONE")
+    authorizer_key       = optional(string)
+    authorization_scopes = optional(list(string), [])
+    connection_type      = optional(string, "INTERNET")
+    timeout_milliseconds = optional(number, 30000)
+    request_parameters   = optional(map(string), {})
+  }))
+  description = "Rotas HTTP_PROXY do API Gateway. As rotas dos microsservicos podem ser adicionadas quando os backends estiverem publicados."
+  default     = {}
+}
+
+variable "api_gateway_jwt_authorizers" {
+  type = map(object({
+    issuer           = optional(string)
+    audience         = list(string)
+    identity_sources = optional(list(string), ["$request.header.Authorization"])
+  }))
+  description = "Authorizers JWT do API Gateway HTTP API."
+  default     = {}
+}
+
+variable "api_gateway_lambda_routes" {
+  type = map(object({
+    invoke_arn             = string
+    function_name          = optional(string)
+    authorization_type     = optional(string, "NONE")
+    authorizer_key         = optional(string)
+    authorization_scopes   = optional(list(string), [])
+    payload_format_version = optional(string, "2.0")
+    timeout_milliseconds   = optional(number, 30000)
+    request_parameters     = optional(map(string), {})
+  }))
+  description = "Rotas AWS_PROXY para Lambdas compartilhadas."
+  default     = {}
+}
+
+variable "api_gateway_enable_access_logs" {
+  type        = bool
+  description = "Quando true, habilita access logs do API Gateway."
+  default     = true
+}
+
+variable "api_gateway_access_log_retention_in_days" {
+  type        = number
+  description = "Retencao dos access logs do API Gateway."
+  default     = 14
+}
+
+variable "api_gateway_default_route_throttling_burst_limit" {
+  type        = number
+  description = "Burst limit padrao do API Gateway."
+  default     = 50
+}
+
+variable "api_gateway_default_route_throttling_rate_limit" {
+  type        = number
+  description = "Rate limit padrao do API Gateway."
+  default     = 25
+}
+
+variable "api_gateway_enable_detailed_metrics" {
+  type        = bool
+  description = "Quando true, habilita metricas detalhadas por rota."
+  default     = true
+}
+
+variable "api_gateway_vpc_link_subnet_ids" {
+  type        = list(string)
+  description = "Subnets usadas pelo VPC Link quando alguma rota usar VPC_LINK."
+  default     = []
+}
+
+variable "api_gateway_vpc_link_security_group_ids" {
+  type        = list(string)
+  description = "Security groups existentes para o VPC Link."
+  default     = []
+}
+
+variable "api_gateway_create_vpc_link_security_group" {
+  type        = bool
+  description = "Quando true, cria um security group dedicado para o VPC Link quando necessario."
+  default     = true
+}
+
+variable "create_terraform_shared_data_bucket" {
+  type        = bool
+  description = "Quando true, cria o bucket S3 compartilhado usado por states e dados de infraestrutura."
+  default     = false
+}
+
+variable "terraform_shared_data_bucket_name" {
+  type        = string
+  description = "Nome do bucket S3 compartilhado. Se nulo, deriva de infra, conta e regiao."
+  default     = null
+}
+
+variable "terraform_shared_data_bucket_force_destroy" {
+  type        = bool
+  description = "Quando true, permite destruir o bucket S3 mesmo com objetos."
+  default     = false
 }
 
 variable "instance_class" {

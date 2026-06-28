@@ -2,11 +2,16 @@ region            = "us-east-1"
 environment       = "lab"
 shared_infra_name = "eks-lab"
 
+create_network_if_missing = true
+network_vpc_cidr          = "10.0.0.0/16"
+public_subnet_cidrs       = ["10.0.0.0/20", "10.0.16.0/20"]
+
+create_rds    = true
 db_identifier = "oficina-postgres-lab"
 db_username   = "oficina_master"
 
-vpc_id     = "vpc-xxxxxxxxxxxxxxxxx"
-subnet_ids = ["subnet-xxxxxxxxxxxxxxxxx", "subnet-yyyyyyyyyyyyyyyyy"]
+vpc_id     = null
+subnet_ids = []
 
 allowed_security_group_ids = ["sg-xxxxxxxxxxxxxxxxx"]
 allowed_cidr_blocks       = []
@@ -15,3 +20,21 @@ instance_class            = "db.t4g.micro"
 deletion_protection       = true
 skip_final_snapshot       = false
 final_snapshot_identifier = "oficina-postgres-lab-final"
+
+create_eks           = false
+cluster_name         = "eks-lab"
+kubernetes_version   = "1.35"
+eks_cluster_role_arn = "arn:aws:iam::<aws-account-id>:role/<lab-eks-cluster-role>"
+eks_node_role_arn    = "arn:aws:iam::<aws-account-id>:role/<lab-eks-node-role>"
+
+create_ecr_repositories = true
+ecr_repository_names = [
+  "oficina-os-service",
+  "oficina-billing-service",
+  "oficina-execution-service",
+]
+
+create_api_gateway = true
+api_gateway_name   = "eks-lab-http-api"
+
+create_terraform_shared_data_bucket = false

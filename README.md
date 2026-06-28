@@ -4,6 +4,8 @@ Repositório canônico de infraestrutura compartilhada da suíte da oficina mec�
 
 Este repositório concentra os artefatos executáveis que antes ficavam distribuídos entre `oficina-infra-db` e `oficina-infra-k8s`, preservando as decisões de governança do `oficina-platform`.
 
+Inventário de cópia e adaptação: [Inventário de migração dos repositórios legados](docs/migration-inventory.md).
+
 ## Ambiente canônico
 
 | Item | Valor |
@@ -29,7 +31,12 @@ Arquivos principais:
 
 - [terraform/environments/lab/](terraform/environments/lab/)
 - [terraform/modules/rds-postgres/](terraform/modules/rds-postgres/)
+- [terraform/modules/eks/](terraform/modules/eks/)
+- [terraform/modules/ecr/](terraform/modules/ecr/)
+- [terraform/modules/api_gateway/](terraform/modules/api_gateway/)
+- [k8s/overlays/lab/](k8s/overlays/lab/)
 - [scripts/manual/bootstrap-service-databases.sh](scripts/manual/bootstrap-service-databases.sh)
+- [scripts/actions/ci-deploy.sh](scripts/actions/ci-deploy.sh)
 
 ## Validação local
 
@@ -38,4 +45,22 @@ terraform fmt -check -recursive terraform
 terraform -chdir=terraform/environments/lab init -backend=false
 terraform -chdir=terraform/environments/lab validate
 find scripts -type f -name '*.sh' -print0 | xargs -0 bash -n
+```
+
+## Deploy
+
+O deploy automatizado usa o GitHub Environment `lab` e o state remoto `oficina/lab/infra/terraform.tfstate`.
+
+Variáveis mínimas esperadas:
+
+- `TF_STATE_BUCKET`
+- `AWS_REGION=us-east-1`
+- `EKS_CLUSTER_NAME=eks-lab`
+- `EKS_CLUSTER_ROLE_ARN` e `EKS_NODE_ROLE_ARN`, quando `CREATE_EKS=true`
+- `VPC_ID` e `SUBNET_IDS`, quando a rede não for criada pelo Terraform
+
+Comando local equivalente:
+
+```bash
+TF_STATE_BUCKET=<bucket-state> scripts/actions/ci-deploy.sh
 ```
