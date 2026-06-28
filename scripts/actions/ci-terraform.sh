@@ -21,7 +21,7 @@ Uso:
 
 Variaveis suportadas:
   TERRAFORM_DIR             Diretorio do root module. Default: terraform/environments/lab
-  TERRAFORM_ACTION          plan|apply|destroy|validate. Default: apply
+  TERRAFORM_ACTION          init|plan|apply|destroy|validate. Default: apply
   TF_STATE_BUCKET           Bucket S3 do backend remoto. Obrigatorio exceto para validate
   TF_STATE_KEY              Key do state. Default: oficina/lab/infra/terraform.tfstate
   TF_STATE_REGION           Regiao do backend. Default: AWS_REGION ou us-east-1
@@ -58,10 +58,10 @@ fi
 require_cmd terraform
 
 case "${TERRAFORM_ACTION}" in
-  validate | plan | apply | destroy)
+  init | validate | plan | apply | destroy)
     ;;
   *)
-    fail "TERRAFORM_ACTION deve ser validate, plan, apply ou destroy"
+    fail "TERRAFORM_ACTION deve ser init, validate, plan, apply ou destroy"
     ;;
 esac
 
@@ -71,6 +71,8 @@ terraform -chdir="${TERRAFORM_DIR}" validate
 
 case "${TERRAFORM_ACTION}" in
   validate)
+    ;;
+  init)
     ;;
   plan)
     terraform -chdir="${TERRAFORM_DIR}" plan -input=false

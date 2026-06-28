@@ -40,9 +40,9 @@ GRANT CONNECT ON DATABASE oficina_billing TO oficina_billing_user;
 
 Depois, em cada database, o schema `public` fica sob ownership do usuário do próprio serviço.
 
-## Execução
+## Execução para RDS novo
 
-Copie o exemplo de variáveis e informe a VPC/subnets/security groups do EKS compartilhado:
+Use este fluxo apenas quando a instância `oficina-postgres-lab` ainda não existir no ambiente AWS:
 
 ```bash
 cp terraform/environments/lab/terraform.tfvars.example terraform/environments/lab/terraform.tfvars
@@ -66,9 +66,16 @@ O deploy automatizado executa o mesmo bootstrap por [scripts/actions/ci-deploy.s
 Quando o RDS `oficina-postgres-lab` já existir no state legado de `oficina-infra-db`, não execute um `apply` direto com state vazio. Primeiro importe os recursos existentes para o state do `oficina-infra`:
 
 ```bash
-TF_STATE_BUCKET=<bucket-state> TERRAFORM_ACTION=plan scripts/actions/ci-terraform.sh
+TF_STATE_BUCKET=<bucket-state> TERRAFORM_ACTION=init scripts/actions/ci-terraform.sh
 scripts/manual/import-existing-rds.sh
 terraform -chdir=terraform/environments/lab plan
+```
+
+Se o plano não recriar a instância, aplique e execute o bootstrap:
+
+```bash
+terraform -chdir=terraform/environments/lab apply
+scripts/manual/bootstrap-service-databases.sh
 ```
 
 O script [scripts/manual/import-existing-rds.sh](../scripts/manual/import-existing-rds.sh) usa os identificadores atuais do ambiente `lab` extraídos do state legado e pode receber overrides por variável de ambiente.
