@@ -27,6 +27,17 @@ oficina-postgres-lab
 
 Documentação operacional: [RDS PostgreSQL compartilhado](docs/rds-postgresql.md).
 
+## Ambiente local integrado
+
+Para testes locais de dependências e APIs dos três microsserviços, use o Compose local:
+
+```bash
+docker compose -f compose.local.yml up -d postgres dynamodb localstack
+scripts/local/bootstrap-local.sh
+```
+
+Documentação: [Ambiente local integrado](docs/local-integration.md).
+
 Arquivos principais:
 
 - [terraform/environments/lab/](terraform/environments/lab/)
@@ -35,6 +46,8 @@ Arquivos principais:
 - [terraform/modules/ecr/](terraform/modules/ecr/)
 - [terraform/modules/api_gateway/](terraform/modules/api_gateway/)
 - [k8s/overlays/lab/](k8s/overlays/lab/)
+- [compose.local.yml](compose.local.yml)
+- [scripts/local/bootstrap-local.sh](scripts/local/bootstrap-local.sh)
 - [scripts/manual/bootstrap-service-databases.sh](scripts/manual/bootstrap-service-databases.sh)
 - [scripts/actions/ci-deploy.sh](scripts/actions/ci-deploy.sh)
 
