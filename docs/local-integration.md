@@ -59,6 +59,26 @@ http://localhost:8082/q/swagger-ui
 http://localhost:8083/q/swagger-ui
 ```
 
+## Chamadas mutáveis
+
+Operações `POST` e `PATCH` exigem o header `X-Idempotency-Key`, conforme o contrato de idempotência da plataforma. Use um valor único por tentativa lógica da operação.
+
+Exemplo para criar cliente no `oficina-os-service`:
+
+```bash
+curl -i -X POST http://localhost:8081/api/v1/clientes \
+  -H 'Content-Type: application/json' \
+  -H "X-Idempotency-Key: cliente-$(date +%s)" \
+  -d '{
+    "nome": "Cliente Local",
+    "documento": "12345678909",
+    "telefone": "+5511999999999",
+    "email": "cliente.local@oficina.com"
+  }'
+```
+
+Se a operação for executada pelo Swagger UI e o header não aparecer como campo da operação, use `curl` ou outro cliente HTTP até a OpenAPI gerada pelo microsserviço expor explicitamente o header de idempotência.
+
 ## Rodar microsserviços fora do Compose
 
 Também é possível manter apenas as dependências no Compose e executar cada serviço via Maven:
