@@ -63,6 +63,8 @@ http://localhost:8083/q/swagger-ui
 
 Operações `POST` e `PATCH` exigem o header `X-Idempotency-Key`, conforme o contrato de idempotência da plataforma. Use um valor único por tentativa lógica da operação.
 
+Na Swagger UI, abra a operação mutável, clique em `Try it out` e preencha o campo `X-Idempotency-Key` que aparece na seção de parâmetros. Qualquer valor único com pelo menos 8 caracteres serve para teste local, por exemplo `cliente-local-001`.
+
 Exemplo para criar cliente no `oficina-os-service`:
 
 ```bash
@@ -77,7 +79,11 @@ curl -i -X POST http://localhost:8081/api/v1/clientes \
   }'
 ```
 
-Se a operação for executada pelo Swagger UI e o header não aparecer como campo da operação, use `curl` ou outro cliente HTTP até a OpenAPI gerada pelo microsserviço expor explicitamente o header de idempotência.
+Se esse campo não aparecer no Swagger UI, reconstrua os containers dos microsserviços:
+
+```bash
+docker compose -f compose.local.yml --profile services up -d --build
+```
 
 ## Rodar microsserviços fora do Compose
 
