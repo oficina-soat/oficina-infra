@@ -38,6 +38,12 @@ scripts/local/bootstrap-local.sh
 
 Documentação: [Ambiente local integrado](docs/local-integration.md).
 
+## Kubernetes dos microsserviços
+
+Este repositório é a fonte canônica dos manifests Kubernetes executáveis dos microsserviços da Fase 4. A estratégia de entrega está definida em [Estratégia de entrega dos manifestos Kubernetes](../oficina-platform/docs/kubernetes-manifest-strategy.md).
+
+Os manifests devem ser materializados em `k8s/base/microservices/<nome-do-servico>/` e referenciados pelo overlay `k8s/overlays/lab/` quando os recursos dependentes do ambiente estiverem prontos.
+
 Arquivos principais:
 
 - [terraform/environments/lab/](terraform/environments/lab/)
