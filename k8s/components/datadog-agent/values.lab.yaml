@@ -1,0 +1,48 @@
+datadog:
+  site: DATADOG_SITE_PLACEHOLDER
+  clusterName: DATADOG_CLUSTER_NAME_PLACEHOLDER
+  apiKeyExistingSecret: DATADOG_API_KEY_SECRET_NAME_PLACEHOLDER
+  tags:
+    - project:oficina
+    - env:lab
+    - deployment_environment:lab
+    - service_namespace:oficina
+  logs:
+    enabled: true
+    containerCollectAll: true
+    containerCollectUsingFiles: true
+  otlp:
+    receiver:
+      protocols:
+        grpc:
+          enabled: true
+          endpoint: "0.0.0.0:4317"
+          useHostPort: false
+        http:
+          enabled: false
+    logs:
+      enabled: false
+  prometheusScrape:
+    enabled: true
+    serviceEndpoints: true
+  kubeStateMetricsCore:
+    enabled: true
+  orchestratorExplorer:
+    enabled: true
+  processAgent:
+    enabled: true
+    processCollection: false
+  podLabelsAsTags:
+    app.kubernetes.io/name: service
+    app.kubernetes.io/part-of: service_namespace
+    app.kubernetes.io/component: service_component
+
+agents:
+  localService:
+    forceLocalServiceEnabled: true
+    overrideName: DATADOG_LOCAL_SERVICE_NAME_PLACEHOLDER
+
+clusterAgent:
+  enabled: true
+  admissionController:
+    enabled: false

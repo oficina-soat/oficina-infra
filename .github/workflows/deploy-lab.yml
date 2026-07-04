@@ -69,6 +69,14 @@ jobs:
       TF_VAR_create_terraform_shared_data_bucket: ${{ vars.CREATE_TERRAFORM_SHARED_DATA_BUCKET || 'false' }}
       BOOTSTRAP_SERVICE_DATABASES: ${{ vars.BOOTSTRAP_SERVICE_DATABASES || 'true' }}
       APPLY_K8S: ${{ vars.APPLY_K8S || 'true' }}
+      INSTALL_DATADOG_AGENT: ${{ vars.INSTALL_DATADOG_AGENT || 'false' }}
+      DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+      DATADOG_SITE: ${{ vars.DATADOG_SITE || 'datadoghq.com' }}
+      DATADOG_NAMESPACE: ${{ vars.DATADOG_NAMESPACE || 'datadog' }}
+      DATADOG_HELM_RELEASE: ${{ vars.DATADOG_HELM_RELEASE || 'datadog-agent' }}
+      DATADOG_API_KEY_SECRET_NAME: ${{ vars.DATADOG_API_KEY_SECRET_NAME || 'datadog-secret' }}
+      DATADOG_API_KEY_SECRET_KEY: ${{ vars.DATADOG_API_KEY_SECRET_KEY || 'api-key' }}
+      DATADOG_LOCAL_SERVICE_NAME: ${{ vars.DATADOG_LOCAL_SERVICE_NAME || 'datadog-agent' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -80,6 +88,10 @@ jobs:
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v5
+
+      - name: Setup Helm
+        if: env.INSTALL_DATADOG_AGENT == 'true'
+        uses: azure/setup-helm@v4
 
       - name: Deploy lab infrastructure
         shell: bash

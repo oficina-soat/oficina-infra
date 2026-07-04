@@ -44,6 +44,12 @@ Este repositório é a fonte canônica dos manifests Kubernetes executáveis dos
 
 Os manifests devem ser materializados em `k8s/base/microservices/<nome-do-servico>/` e referenciados pelo overlay `k8s/overlays/lab/` quando os recursos dependentes do ambiente estiverem prontos.
 
+## Observabilidade Datadog
+
+O Datadog Agent do ambiente `lab` é instalado via Helm no cluster `eks-lab`, usando API key fornecida por variável/secret de deploy e valores versionados em [k8s/components/datadog-agent/values.lab.yaml](k8s/components/datadog-agent/values.lab.yaml).
+
+Documentação operacional: [Datadog Agent no EKS lab](docs/datadog-agent.md).
+
 Arquivos principais:
 
 - [terraform/environments/lab/](terraform/environments/lab/)
@@ -52,9 +58,11 @@ Arquivos principais:
 - [terraform/modules/ecr/](terraform/modules/ecr/)
 - [terraform/modules/api_gateway/](terraform/modules/api_gateway/)
 - [k8s/overlays/lab/](k8s/overlays/lab/)
+- [k8s/components/datadog-agent/values.lab.yaml](k8s/components/datadog-agent/values.lab.yaml)
 - [compose.local.yml](compose.local.yml)
 - [scripts/local/bootstrap-local.sh](scripts/local/bootstrap-local.sh)
 - [scripts/manual/bootstrap-service-databases.sh](scripts/manual/bootstrap-service-databases.sh)
+- [scripts/manual/install-datadog-agent.sh](scripts/manual/install-datadog-agent.sh)
 - [scripts/actions/ci-deploy.sh](scripts/actions/ci-deploy.sh)
 
 ## Validação local
@@ -77,6 +85,7 @@ Variáveis mínimas esperadas:
 - `EKS_CLUSTER_NAME=eks-lab`
 - `EKS_CLUSTER_ROLE_ARN` e `EKS_NODE_ROLE_ARN`, quando `CREATE_EKS=true`
 - `VPC_ID` e `SUBNET_IDS`, quando a rede não for criada pelo Terraform
+- `INSTALL_DATADOG_AGENT=true`, `DATADOG_API_KEY` e `DATADOG_SITE`, quando o Agent Datadog deve ser instalado no cluster
 
 Comando local equivalente:
 
