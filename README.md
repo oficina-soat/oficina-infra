@@ -27,6 +27,17 @@ oficina-postgres-lab
 
 Documentação operacional: [RDS PostgreSQL compartilhado](docs/rds-postgresql.md).
 
+## DynamoDB e mensageria
+
+O Terraform do ambiente `lab` provisiona as tabelas DynamoDB do `oficina-execution-service` e a mensageria SNS/SQS da Fase 4:
+
+- tabelas `oficina-execution-lab-catalogo`, `oficina-execution-lab-estoque`, `oficina-execution-lab-execucoes`, `oficina-execution-lab-outbox` e `oficina-execution-lab-idempotencia`;
+- tópicos SNS canônicos convertidos para nomes físicos com hífen, por exemplo `oficina.execution.execucao-finalizada` como `oficina-execution-execucao-finalizada`;
+- filas SQS por consumidor, DLQs por tópico e assinaturas com `RawMessageDelivery=true`;
+- políticas IAM gerenciadas separadas para publicação, consumo e acesso DynamoDB.
+
+Documentação operacional: [DynamoDB e mensageria da Fase 4](docs/dynamodb-messaging.md).
+
 ## Ambiente local integrado
 
 Para testes locais de dependências e APIs dos três microsserviços, use o Compose local:
@@ -54,6 +65,8 @@ Arquivos principais:
 
 - [terraform/environments/lab/](terraform/environments/lab/)
 - [terraform/modules/rds-postgres/](terraform/modules/rds-postgres/)
+- [terraform/modules/dynamodb_execution/](terraform/modules/dynamodb_execution/)
+- [terraform/modules/domain_messaging/](terraform/modules/domain_messaging/)
 - [terraform/modules/eks/](terraform/modules/eks/)
 - [terraform/modules/ecr/](terraform/modules/ecr/)
 - [terraform/modules/api_gateway/](terraform/modules/api_gateway/)
@@ -85,6 +98,8 @@ Variáveis mínimas esperadas:
 - `EKS_CLUSTER_NAME=eks-lab`
 - `EKS_CLUSTER_ROLE_ARN` e `EKS_NODE_ROLE_ARN`, quando `CREATE_EKS=true`
 - `VPC_ID` e `SUBNET_IDS`, quando a rede não for criada pelo Terraform
+- `CREATE_EXECUTION_DYNAMODB=false`, quando as tabelas DynamoDB não devem ser criadas pelo workflow
+- `CREATE_DOMAIN_MESSAGING=false`, quando SNS/SQS da Fase 4 não devem ser criados pelo workflow
 - `INSTALL_DATADOG_AGENT=true`, `DATADOG_API_KEY` e `DATADOG_SITE`, quando o Agent Datadog deve ser instalado no cluster
 
 Comando local equivalente:

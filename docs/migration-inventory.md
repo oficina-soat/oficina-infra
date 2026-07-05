@@ -17,6 +17,13 @@ Este inventário registra a cópia controlada de artefatos de `oficina-infra-db`
 | `oficina-infra-k8s/k8s/components/mailhog` | [k8s/components/mailhog/](../k8s/components/mailhog/) | Mantido como componente compartilhado de laboratório para notificações. |
 | Workflows e scripts dos repositórios legados | [.github/workflows/](../.github/workflows/) e [scripts/actions/](../scripts/actions/) | Recriados de forma enxuta para state unificado `oficina/lab/infra/terraform.tfstate`, sem disparos para repositórios legados. |
 
+## Criados para a Fase 4
+
+| Destino | Descrição |
+|---|---|
+| [terraform/modules/dynamodb_execution/](../terraform/modules/dynamodb_execution/) | Provisiona as tabelas DynamoDB canônicas do `oficina-execution-service`, com streams, TTL e política IAM de runtime. |
+| [terraform/modules/domain_messaging/](../terraform/modules/domain_messaging/) | Provisiona tópicos SNS, filas SQS, DLQs, assinaturas e políticas IAM de produtores/consumidores conforme o contrato de mensageria da plataforma. |
+
 ## Mantidos fora do `oficina-infra`
 
 | Origem | Motivo |
@@ -28,7 +35,5 @@ Este inventário registra a cópia controlada de artefatos de `oficina-infra-db`
 
 ## Pendências
 
-- Adicionar DynamoDB do `oficina-execution-service`.
-- Adicionar mensageria, filas, assinaturas e DLQs da Fase 4.
 - Definir rotas reais do API Gateway quando os endpoints dos microsserviços estiverem publicados.
 - Importar/adotar o RDS existente no state do `oficina-infra` quando as credenciais AWS do laboratório estiverem renovadas.

@@ -116,7 +116,8 @@ create_messaging_route() {
     aws_localstack sns subscribe \
       --topic-arn "${topic_arn}" \
       --protocol sqs \
-      --notification-endpoint "${queue_arn}" >/dev/null
+      --notification-endpoint "${queue_arn}" \
+      --attributes RawMessageDelivery=true >/dev/null
   done
 }
 

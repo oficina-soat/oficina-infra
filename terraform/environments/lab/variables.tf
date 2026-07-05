@@ -306,6 +306,96 @@ variable "terraform_shared_data_bucket_force_destroy" {
   default     = false
 }
 
+variable "create_execution_dynamodb" {
+  type        = bool
+  description = "Quando true, cria as tabelas DynamoDB canonicas do oficina-execution-service."
+  default     = true
+}
+
+variable "execution_dynamodb_table_prefix" {
+  type        = string
+  description = "Prefixo das tabelas DynamoDB do oficina-execution-service. Se nulo, deriva de environment."
+  default     = null
+}
+
+variable "execution_dynamodb_point_in_time_recovery_enabled" {
+  type        = bool
+  description = "Habilita point-in-time recovery nas tabelas DynamoDB do oficina-execution-service."
+  default     = false
+}
+
+variable "execution_dynamodb_deletion_protection_enabled" {
+  type        = bool
+  description = "Habilita protecao contra exclusao acidental das tabelas DynamoDB do oficina-execution-service."
+  default     = false
+}
+
+variable "execution_dynamodb_kms_key_arn" {
+  type        = string
+  description = "KMS key opcional para criptografia das tabelas DynamoDB. Se nulo, usa chave gerenciada pela AWS."
+  default     = null
+}
+
+variable "create_domain_messaging" {
+  type        = bool
+  description = "Quando true, cria SNS/SQS, assinaturas, DLQs e politicas IAM da mensageria da Fase 4."
+  default     = true
+}
+
+variable "create_runtime_iam_policies" {
+  type        = bool
+  description = "Quando true, cria politicas IAM gerenciadas para runtime de DynamoDB e mensageria."
+  default     = true
+}
+
+variable "domain_messaging_max_receive_count" {
+  type        = number
+  description = "Quantidade maxima de recebimentos SQS antes de enviar para DLQ."
+  default     = 5
+}
+
+variable "domain_messaging_queue_visibility_timeout_seconds" {
+  type        = number
+  description = "Visibility timeout das filas consumidoras da mensageria de dominio."
+  default     = 30
+}
+
+variable "domain_messaging_queue_message_retention_seconds" {
+  type        = number
+  description = "Retencao das mensagens nas filas consumidoras."
+  default     = 345600
+}
+
+variable "domain_messaging_dlq_message_retention_seconds" {
+  type        = number
+  description = "Retencao das mensagens nas DLQs."
+  default     = 1209600
+}
+
+variable "domain_messaging_queue_receive_wait_time_seconds" {
+  type        = number
+  description = "Long polling das filas consumidoras."
+  default     = 10
+}
+
+variable "domain_messaging_raw_message_delivery" {
+  type        = bool
+  description = "Quando true, entrega no SQS o envelope de dominio sem envelope adicional do SNS."
+  default     = true
+}
+
+variable "domain_messaging_sqs_managed_sse_enabled" {
+  type        = bool
+  description = "Habilita criptografia SSE gerenciada pelo SQS nas filas e DLQs."
+  default     = true
+}
+
+variable "domain_messaging_sns_kms_master_key_id" {
+  type        = string
+  description = "KMS key opcional para os topicos SNS. Se nulo, usa configuracao padrao do SNS."
+  default     = null
+}
+
 variable "instance_class" {
   type        = string
   description = "Classe da instancia RDS."

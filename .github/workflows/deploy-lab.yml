@@ -67,6 +67,15 @@ jobs:
       TF_VAR_eks_node_role_arn: ${{ vars.EKS_NODE_ROLE_ARN }}
       TF_VAR_eks_access_principal_arn: ${{ vars.EKS_ACCESS_PRINCIPAL_ARN }}
       TF_VAR_create_terraform_shared_data_bucket: ${{ vars.CREATE_TERRAFORM_SHARED_DATA_BUCKET || 'false' }}
+      TF_VAR_create_execution_dynamodb: ${{ vars.CREATE_EXECUTION_DYNAMODB || 'true' }}
+      TF_VAR_execution_dynamodb_table_prefix: ${{ vars.EXECUTION_DYNAMODB_TABLE_PREFIX }}
+      TF_VAR_execution_dynamodb_point_in_time_recovery_enabled: ${{ vars.EXECUTION_DYNAMODB_POINT_IN_TIME_RECOVERY_ENABLED || 'false' }}
+      TF_VAR_execution_dynamodb_deletion_protection_enabled: ${{ vars.EXECUTION_DYNAMODB_DELETION_PROTECTION_ENABLED || 'false' }}
+      TF_VAR_execution_dynamodb_kms_key_arn: ${{ vars.EXECUTION_DYNAMODB_KMS_KEY_ARN }}
+      TF_VAR_create_domain_messaging: ${{ vars.CREATE_DOMAIN_MESSAGING || 'true' }}
+      TF_VAR_create_runtime_iam_policies: ${{ vars.CREATE_RUNTIME_IAM_POLICIES || 'true' }}
+      TF_VAR_domain_messaging_raw_message_delivery: ${{ vars.DOMAIN_MESSAGING_RAW_MESSAGE_DELIVERY || 'true' }}
+      TF_VAR_domain_messaging_sns_kms_master_key_id: ${{ vars.DOMAIN_MESSAGING_SNS_KMS_MASTER_KEY_ID }}
       BOOTSTRAP_SERVICE_DATABASES: ${{ vars.BOOTSTRAP_SERVICE_DATABASES || 'true' }}
       APPLY_K8S: ${{ vars.APPLY_K8S || 'true' }}
       INSTALL_DATADOG_AGENT: ${{ vars.INSTALL_DATADOG_AGENT || 'false' }}

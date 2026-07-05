@@ -37,6 +37,129 @@ locals {
     local.input_terraform_shared_data_bucket_name,
     "tf-shared-${var.shared_infra_name}-${data.aws_caller_identity.current.account_id}-${var.region}",
   )
+  input_execution_dynamodb_table_prefix = (
+    var.execution_dynamodb_table_prefix != null && trimspace(var.execution_dynamodb_table_prefix) != "" ? var.execution_dynamodb_table_prefix : null
+  )
+  execution_dynamodb_table_prefix = coalesce(
+    local.input_execution_dynamodb_table_prefix,
+    "oficina-execution-${var.environment}",
+  )
+  domain_event_routes = {
+    ordemDeServicoCriada = {
+      event_type = "ordemDeServicoCriada"
+      topic      = "oficina.os.ordem-de-servico-criada"
+      producer   = "oficina-os-service"
+      consumers  = ["oficina-billing-service", "oficina-execution-service"]
+    }
+    diagnosticoIniciado = {
+      event_type = "diagnosticoIniciado"
+      topic      = "oficina.execution.diagnostico-iniciado"
+      producer   = "oficina-execution-service"
+      consumers  = ["oficina-os-service"]
+    }
+    pecaIncluidaNaOrdemDeServico = {
+      event_type = "pecaIncluidaNaOrdemDeServico"
+      topic      = "oficina.os.peca-incluida-na-ordem-de-servico"
+      producer   = "oficina-os-service"
+      consumers  = ["oficina-billing-service", "oficina-execution-service"]
+    }
+    servicoIncluidoNaOrdemDeServico = {
+      event_type = "servicoIncluidoNaOrdemDeServico"
+      topic      = "oficina.os.servico-incluido-na-ordem-de-servico"
+      producer   = "oficina-os-service"
+      consumers  = ["oficina-billing-service", "oficina-execution-service"]
+    }
+    diagnosticoFinalizado = {
+      event_type = "diagnosticoFinalizado"
+      topic      = "oficina.execution.diagnostico-finalizado"
+      producer   = "oficina-execution-service"
+      consumers  = ["oficina-os-service", "oficina-billing-service"]
+    }
+    orcamentoGerado = {
+      event_type = "orcamentoGerado"
+      topic      = "oficina.billing.orcamento-gerado"
+      producer   = "oficina-billing-service"
+      consumers  = ["oficina-os-service"]
+    }
+    orcamentoAprovado = {
+      event_type = "orcamentoAprovado"
+      topic      = "oficina.billing.orcamento-aprovado"
+      producer   = "oficina-billing-service"
+      consumers  = ["oficina-os-service", "oficina-execution-service"]
+    }
+    orcamentoRecusado = {
+      event_type = "orcamentoRecusado"
+      topic      = "oficina.billing.orcamento-recusado"
+      producer   = "oficina-billing-service"
+      consumers  = ["oficina-os-service"]
+    }
+    execucaoIniciada = {
+      event_type = "execucaoIniciada"
+      topic      = "oficina.execution.execucao-iniciada"
+      producer   = "oficina-execution-service"
+      consumers  = ["oficina-os-service"]
+    }
+    execucaoFinalizada = {
+      event_type = "execucaoFinalizada"
+      topic      = "oficina.execution.execucao-finalizada"
+      producer   = "oficina-execution-service"
+      consumers  = ["oficina-os-service", "oficina-billing-service"]
+    }
+    ordemDeServicoFinalizada = {
+      event_type = "ordemDeServicoFinalizada"
+      topic      = "oficina.os.ordem-de-servico-finalizada"
+      producer   = "oficina-os-service"
+      consumers  = ["oficina-billing-service", "oficina-execution-service"]
+    }
+    ordemDeServicoEntregue = {
+      event_type = "ordemDeServicoEntregue"
+      topic      = "oficina.os.ordem-de-servico-entregue"
+      producer   = "oficina-os-service"
+      consumers  = ["oficina-billing-service"]
+    }
+    pagamentoSolicitado = {
+      event_type = "pagamentoSolicitado"
+      topic      = "oficina.billing.pagamento-solicitado"
+      producer   = "oficina-billing-service"
+      consumers  = ["oficina-os-service"]
+    }
+    pagamentoConfirmado = {
+      event_type = "pagamentoConfirmado"
+      topic      = "oficina.billing.pagamento-confirmado"
+      producer   = "oficina-billing-service"
+      consumers  = ["oficina-os-service"]
+    }
+    pagamentoRecusado = {
+      event_type = "pagamentoRecusado"
+      topic      = "oficina.billing.pagamento-recusado"
+      producer   = "oficina-billing-service"
+      consumers  = ["oficina-os-service"]
+    }
+    estoqueAcrescentado = {
+      event_type = "estoqueAcrescentado"
+      topic      = "oficina.execution.estoque-acrescentado"
+      producer   = "oficina-execution-service"
+      consumers  = ["oficina-billing-service"]
+    }
+    estoqueBaixado = {
+      event_type = "estoqueBaixado"
+      topic      = "oficina.execution.estoque-baixado"
+      producer   = "oficina-execution-service"
+      consumers  = ["oficina-billing-service"]
+    }
+    sagaCompensada = {
+      event_type = "sagaCompensada"
+      topic      = "oficina.saga.saga-compensada"
+      producer   = "oficina-os-service"
+      consumers  = ["oficina-billing-service", "oficina-execution-service"]
+    }
+    sagaFinalizadaComSucesso = {
+      event_type = "sagaFinalizadaComSucesso"
+      topic      = "oficina.saga.saga-finalizada-com-sucesso"
+      producer   = "oficina-os-service"
+      consumers  = ["oficina-billing-service", "oficina-execution-service"]
+    }
+  }
 }
 
 check "canonical_environment" {
@@ -71,6 +194,13 @@ check "final_snapshot_inputs" {
   assert {
     condition     = var.skip_final_snapshot || var.final_snapshot_identifier != null
     error_message = "Informe final_snapshot_identifier quando skip_final_snapshot=false."
+  }
+}
+
+check "execution_dynamodb_table_prefix" {
+  assert {
+    condition     = !var.create_execution_dynamodb || local.execution_dynamodb_table_prefix == "oficina-execution-${var.environment}"
+    error_message = "O prefixo DynamoDB deve seguir oficina-execution-<environment>, por exemplo oficina-execution-lab."
   }
 }
 
@@ -148,6 +278,36 @@ module "api_gateway" {
   jwt_authorizers                      = var.api_gateway_jwt_authorizers
   lambda_routes                        = var.api_gateway_lambda_routes
   tags                                 = local.default_tags
+}
+
+module "execution_dynamodb" {
+  count  = var.create_execution_dynamodb ? 1 : 0
+  source = "../../modules/dynamodb_execution"
+
+  table_prefix                   = local.execution_dynamodb_table_prefix
+  point_in_time_recovery_enabled = var.execution_dynamodb_point_in_time_recovery_enabled
+  deletion_protection_enabled    = var.execution_dynamodb_deletion_protection_enabled
+  kms_key_arn                    = var.execution_dynamodb_kms_key_arn
+  create_runtime_iam_policy      = var.create_runtime_iam_policies
+  tags                           = local.default_tags
+}
+
+module "domain_messaging" {
+  count  = var.create_domain_messaging ? 1 : 0
+  source = "../../modules/domain_messaging"
+
+  routes                           = local.domain_event_routes
+  policy_name_prefix               = "oficina-${var.environment}-domain-messaging"
+  max_receive_count                = var.domain_messaging_max_receive_count
+  queue_visibility_timeout_seconds = var.domain_messaging_queue_visibility_timeout_seconds
+  queue_message_retention_seconds  = var.domain_messaging_queue_message_retention_seconds
+  dlq_message_retention_seconds    = var.domain_messaging_dlq_message_retention_seconds
+  queue_receive_wait_time_seconds  = var.domain_messaging_queue_receive_wait_time_seconds
+  raw_message_delivery             = var.domain_messaging_raw_message_delivery
+  sqs_managed_sse_enabled          = var.domain_messaging_sqs_managed_sse_enabled
+  sns_kms_master_key_id            = var.domain_messaging_sns_kms_master_key_id
+  create_runtime_iam_policies      = var.create_runtime_iam_policies
+  tags                             = local.default_tags
 }
 
 module "terraform_shared_data_bucket" {
