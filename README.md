@@ -90,10 +90,11 @@ find scripts -type f -name '*.sh' -print0 | xargs -0 bash -n
 ## Deploy
 
 O deploy automatizado usa o GitHub Environment `lab` e o state remoto `oficina/lab/infra/terraform.tfstate`.
+Quando `TF_STATE_BUCKET` não for informado, o script deriva o bucket canônico a partir da conta AWS da execução, no formato `tf-shared-eks-lab-<aws-account-id>-us-east-1`.
 
 Variáveis mínimas esperadas:
 
-- `TF_STATE_BUCKET`
+- `TF_STATE_BUCKET`, opcional quando o bucket usa o nome canônico derivado
 - `AWS_REGION=us-east-1`
 - `EKS_CLUSTER_NAME=eks-lab`
 - `EKS_CLUSTER_ROLE_ARN` e `EKS_NODE_ROLE_ARN`, quando `CREATE_EKS=true`
@@ -107,3 +108,5 @@ Comando local equivalente:
 ```bash
 TF_STATE_BUCKET=<bucket-state> scripts/actions/ci-deploy.sh
 ```
+
+Quando as credenciais AWS locais apontam para a conta correta e o bucket usa o nome canônico, o comando também pode ser executado sem `TF_STATE_BUCKET`.
