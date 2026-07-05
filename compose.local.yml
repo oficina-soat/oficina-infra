@@ -1,0 +1,131 @@
+name: oficina-local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: oficina-local-postgres
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: oficina_admin
+      POSTGRES_PASSWORD: oficina_admin_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - oficina_local_postgres_data:/var/lib/postgresql/data
+      - ./scripts/local/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oficina_admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  dynamodb:
+    image: amazon/dynamodb-local:2.5.2
+    container_name: oficina-local-dynamodb
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
+    ports:
+      - "8000:8000"
+
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: oficina-local-localstack
+    environment:
+      AWS_DEFAULT_REGION: us-east-1
+      SERVICES: sns,sqs
+      DEBUG: "0"
+    ports:
+      - "4566:4566"
+    volumes:
+      - oficina_local_localstack_data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:4566/_localstack/health | grep -q '\"sns\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  oficina-os-service:
+    profiles: ["services"]
+    build:
+      context: ../oficina-os-service
+      args:
+        MAVEN_PROFILE: postgresql
+    container_name: oficina-local-os-service
+    environment:
+      DEPLOYMENT_ENVIRONMENT: local
+      DB_USERNAME: oficina_os_user
+      DB_PASSWORD: oficina_os_password
+      JDBC_DATABASE_URL: jdbc:postgresql://postgres:5432/oficina_os
+      REACTIVE_DATABASE_URL: postgresql://postgres:5432/oficina_os
+      OFICINA_AUTH_ISSUER: oficina-api
+      OFICINA_AUTH_AUDIENCE: oficina-app
+      MP_JWT_VERIFY_PUBLICKEY_LOCATION: classpath:jwt/publicKey.pem
+      OFICINA_OBSERVABILITY_JSON_LOGS_ENABLED: "false"
+      QUARKUS_OTEL_TRACES_EXPORTER: none
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  oficina-billing-service:
+    profiles: ["services"]
+    build:
+      context: ../oficina-billing-service
+      args:
+        MAVEN_PROFILE: postgresql
+    container_name: oficina-local-billing-service
+    environment:
+      DEPLOYMENT_ENVIRONMENT: local
+      DB_USERNAME: oficina_billing_user
+      DB_PASSWORD: oficina_billing_password
+      JDBC_DATABASE_URL: jdbc:postgresql://postgres:5432/oficina_billing
+      REACTIVE_DATABASE_URL: postgresql://postgres:5432/oficina_billing
+      OFICINA_AUTH_ISSUER: oficina-api
+      OFICINA_AUTH_AUDIENCE: oficina-app
+      MP_JWT_VERIFY_PUBLICKEY_LOCATION: classpath:jwt/publicKey.pem
+      OFICINA_OBSERVABILITY_JSON_LOGS_ENABLED: "false"
+      QUARKUS_OTEL_TRACES_EXPORTER: none
+    ports:
+      - "8082:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  oficina-execution-service:
+    profiles: ["services"]
+    build:
+      context: ../oficina-execution-service
+      args:
+        MAVEN_PROFILE: dynamodb
+    container_name: oficina-local-execution-service
+    environment:
+      DEPLOYMENT_ENVIRONMENT: local
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      OFICINA_DYNAMODB_TABLE_PREFIX: oficina-execution-lab
+      DYNAMODB_ENDPOINT_OVERRIDE: http://dynamodb:8000
+      OFICINA_AUTH_ISSUER: oficina-api
+      OFICINA_AUTH_AUDIENCE: oficina-app
+      MP_JWT_VERIFY_PUBLICKEY_LOCATION: classpath:jwt/publicKey.pem
+      OFICINA_OBSERVABILITY_JSON_LOGS_ENABLED: "false"
+      QUARKUS_OTEL_TRACES_EXPORTER: none
+    ports:
+      - "8083:8080"
+    depends_on:
+      dynamodb:
+        condition: service_started
+
+  aws-cli:
+    profiles: ["tools"]
+    image: amazon/aws-cli:2.17.62
+    entrypoint: ["aws"]
+    environment:
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      AWS_DEFAULT_REGION: us-east-1
+
+volumes:
+  oficina_local_postgres_data:
+  oficina_local_localstack_data:

@@ -1,0 +1,107 @@
+name: Deploy Lab
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: lab-infra
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      TF_CLI_ARGS: -no-color
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v5
+
+      - name: Validate repository
+        shell: bash
+        run: bash ./scripts/actions/validate.sh
+
+  deploy:
+    needs: validate
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    environment:
+      name: lab
+    permissions:
+      contents: read
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_CLI_ARGS: -no-color
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'eks-lab' }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'oficina/lab/infra/terraform.tfstate' }}
+      TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || 'us-east-1' }}
+      TF_STATE_DYNAMODB_TABLE: ${{ vars.TF_STATE_DYNAMODB_TABLE }}
+      TF_VAR_create_network_if_missing: ${{ vars.CREATE_NETWORK_IF_MISSING || 'true' }}
+      TF_VAR_vpc_id: ${{ vars.VPC_ID }}
+      TF_VAR_subnet_ids: ${{ vars.SUBNET_IDS || '[]' }}
+      TF_VAR_allowed_security_group_ids: ${{ vars.RDS_ALLOWED_SECURITY_GROUP_IDS || '[]' }}
+      TF_VAR_allowed_cidr_blocks: ${{ vars.RDS_ALLOWED_CIDR_BLOCKS || '[]' }}
+      TF_VAR_create_eks: ${{ vars.CREATE_EKS || 'false' }}
+      TF_VAR_eks_cluster_role_arn: ${{ vars.EKS_CLUSTER_ROLE_ARN }}
+      TF_VAR_eks_node_role_arn: ${{ vars.EKS_NODE_ROLE_ARN }}
+      TF_VAR_eks_access_principal_arn: ${{ vars.EKS_ACCESS_PRINCIPAL_ARN }}
+      TF_VAR_create_terraform_shared_data_bucket: ${{ vars.CREATE_TERRAFORM_SHARED_DATA_BUCKET || 'false' }}
+      TF_VAR_create_execution_dynamodb: ${{ vars.CREATE_EXECUTION_DYNAMODB || 'true' }}
+      TF_VAR_execution_dynamodb_table_prefix: ${{ vars.EXECUTION_DYNAMODB_TABLE_PREFIX }}
+      TF_VAR_execution_dynamodb_point_in_time_recovery_enabled: ${{ vars.EXECUTION_DYNAMODB_POINT_IN_TIME_RECOVERY_ENABLED || 'false' }}
+      TF_VAR_execution_dynamodb_deletion_protection_enabled: ${{ vars.EXECUTION_DYNAMODB_DELETION_PROTECTION_ENABLED || 'false' }}
+      TF_VAR_execution_dynamodb_kms_key_arn: ${{ vars.EXECUTION_DYNAMODB_KMS_KEY_ARN }}
+      TF_VAR_create_domain_messaging: ${{ vars.CREATE_DOMAIN_MESSAGING || 'true' }}
+      TF_VAR_create_runtime_iam_policies: ${{ vars.CREATE_RUNTIME_IAM_POLICIES || 'true' }}
+      TF_VAR_domain_messaging_raw_message_delivery: ${{ vars.DOMAIN_MESSAGING_RAW_MESSAGE_DELIVERY || 'true' }}
+      TF_VAR_domain_messaging_sns_kms_master_key_id: ${{ vars.DOMAIN_MESSAGING_SNS_KMS_MASTER_KEY_ID }}
+      BOOTSTRAP_SERVICE_DATABASES: ${{ vars.BOOTSTRAP_SERVICE_DATABASES || 'true' }}
+      APPLY_K8S: ${{ vars.APPLY_K8S || 'true' }}
+      INSTALL_DATADOG_AGENT: ${{ vars.INSTALL_DATADOG_AGENT || 'false' }}
+      DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+      DATADOG_SITE: ${{ vars.DATADOG_SITE || 'datadoghq.com' }}
+      DATADOG_NAMESPACE: ${{ vars.DATADOG_NAMESPACE || 'datadog' }}
+      DATADOG_HELM_RELEASE: ${{ vars.DATADOG_HELM_RELEASE || 'datadog-agent' }}
+      DATADOG_API_KEY_SECRET_NAME: ${{ vars.DATADOG_API_KEY_SECRET_NAME || 'datadog-secret' }}
+      DATADOG_API_KEY_SECRET_KEY: ${{ vars.DATADOG_API_KEY_SECRET_KEY || 'api-key' }}
+      DATADOG_LOCAL_SERVICE_NAME: ${{ vars.DATADOG_LOCAL_SERVICE_NAME || 'datadog-agent' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v5
+
+      - name: Setup Helm
+        if: env.INSTALL_DATADOG_AGENT == 'true'
+        uses: azure/setup-helm@v4
+
+      - name: Deploy lab infrastructure
+        shell: bash
+        run: bash ./scripts/actions/ci-deploy.sh

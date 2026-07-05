@@ -1,0 +1,50 @@
+name: Destroy Lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: "Digite DESTROY para confirmar a remoção da infraestrutura do lab"
+        required: true
+        type: string
+
+concurrency:
+  group: lab-infra
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  destroy:
+    if: inputs.confirm_destroy == 'DESTROY'
+    runs-on: ubuntu-latest
+    environment:
+      name: lab
+    permissions:
+      contents: read
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_CLI_ARGS: -no-color
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'oficina/lab/infra/terraform.tfstate' }}
+      TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || 'us-east-1' }}
+      TF_STATE_DYNAMODB_TABLE: ${{ vars.TF_STATE_DYNAMODB_TABLE }}
+      TF_VAR_ecr_force_delete: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+
+      - name: Destroy lab infrastructure
+        shell: bash
+        run: TERRAFORM_ACTION=destroy bash ./scripts/actions/ci-terraform.sh
