@@ -63,6 +63,8 @@ O deploy automatizado executa o mesmo bootstrap por [scripts/actions/ci-deploy.s
 
 O bucket S3 do backend remoto é criado automaticamente por [scripts/actions/ci-terraform.sh](../scripts/actions/ci-terraform.sh) quando `BOOTSTRAP_TF_STATE_BUCKET=true`, que é o padrão do CI. Use `BOOTSTRAP_TF_STATE_BUCKET=false` apenas quando o bucket já for provisionado por outro fluxo e a execução deve falhar caso ele não exista.
 
+No workflow de lab, `CREATE_EKS=true` é o padrão para que o security group do cluster seja autorizado automaticamente no RDS. O script [scripts/actions/ci-terraform.sh](../scripts/actions/ci-terraform.sh) também usa `SKIP_FINAL_SNAPSHOT=true` por padrão, evitando a exigência de `FINAL_SNAPSHOT_IDENTIFIER` nas execuções automatizadas do ambiente `lab`.
+
 ## Adoção do RDS existente
 
 Quando o RDS `oficina-postgres-lab` já existir no state legado de `oficina-infra-db`, não execute um `apply` direto com state vazio. Primeiro importe os recursos existentes para o state do `oficina-infra`:

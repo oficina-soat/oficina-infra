@@ -411,7 +411,7 @@ variable "deletion_protection" {
 variable "skip_final_snapshot" {
   type        = bool
   description = "Pula snapshot final ao destruir."
-  default     = false
+  default     = true
 }
 
 variable "final_snapshot_identifier" {

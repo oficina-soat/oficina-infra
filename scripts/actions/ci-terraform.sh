@@ -12,6 +12,11 @@ TERRAFORM_ACTION="${TERRAFORM_ACTION:-apply}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME:-eks-lab}"
 SHARED_INFRA_NAME="${SHARED_INFRA_NAME:-${EKS_CLUSTER_NAME}}"
+export TF_VAR_region="${TF_VAR_region:-${AWS_REGION}}"
+export TF_VAR_cluster_name="${TF_VAR_cluster_name:-${EKS_CLUSTER_NAME}}"
+export TF_VAR_shared_infra_name="${TF_VAR_shared_infra_name:-${SHARED_INFRA_NAME}}"
+export TF_VAR_create_eks="${TF_VAR_create_eks:-true}"
+export TF_VAR_skip_final_snapshot="${TF_VAR_skip_final_snapshot:-true}"
 TF_STATE_BUCKET="${TF_STATE_BUCKET:-}"
 TF_STATE_KEY="${TF_STATE_KEY:-oficina/lab/infra/terraform.tfstate}"
 TF_STATE_REGION="${TF_STATE_REGION:-${AWS_REGION}}"
@@ -31,11 +36,108 @@ Variaveis suportadas:
   TF_STATE_REGION           Regiao do backend. Default: AWS_REGION ou us-east-1
   TF_STATE_DYNAMODB_TABLE   Tabela DynamoDB opcional para lock
   BOOTSTRAP_TF_STATE_BUCKET true|false para criar/configurar o bucket S3 antes do init. Default: true
+  TF_VAR_create_eks         true|false para criar o EKS compartilhado. Default do script: true
+  TF_VAR_skip_final_snapshot true|false para pular snapshot final do RDS no destroy. Default do script: true
 EOF
 }
 
 aws_caller_account_id() {
   aws sts get-caller-identity --query 'Account' --output text
+}
+
+is_truthy_value() {
+  case "${1:-}" in
+    true | TRUE | True | 1 | yes | YES | Yes)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+resolve_role_arn_by_name_fragment() {
+  local fragment="$1"
+
+  aws iam list-roles \
+    --query "Roles[?contains(RoleName, '${fragment}')].Arn | [0]" \
+    --output text 2>/dev/null
+}
+
+resolve_current_principal_arn() {
+  local caller_arn assumed_role_name account_id
+
+  caller_arn="$(aws sts get-caller-identity --query 'Arn' --output text)"
+
+  if [[ "${caller_arn}" =~ ^arn:aws:sts::([0-9]{12}):assumed-role/([^/]+)/.+$ ]]; then
+    account_id="${BASH_REMATCH[1]}"
+    assumed_role_name="${BASH_REMATCH[2]}"
+    printf 'arn:aws:iam::%s:role/%s\n' "${account_id}" "${assumed_role_name}"
+    return
+  fi
+
+  printf '%s\n' "${caller_arn}"
+}
+
+validate_role_account_match() {
+  local arn="$1"
+  local label="$2"
+  local current_account="$3"
+  local arn_account=""
+
+  if [[ "${arn}" =~ ^arn:aws:iam::([0-9]{12}):role/.+$ ]]; then
+    arn_account="${BASH_REMATCH[1]}"
+  fi
+
+  if [[ -n "${arn_account}" && "${arn_account}" != "${current_account}" ]]; then
+    fail "${label} aponta para a conta ${arn_account}, mas as credenciais AWS atuais estao na conta ${current_account}. Configure ${label} com uma role da mesma conta do runner."
+  fi
+}
+
+set_eks_role_defaults() {
+  local current_account cluster_role_arn node_role_arn access_principal_arn
+
+  if ! is_truthy_value "${TF_VAR_create_eks}"; then
+    return
+  fi
+
+  require_cmd aws
+
+  current_account="$(aws_caller_account_id)"
+  cluster_role_arn="${TF_VAR_eks_cluster_role_arn:-}"
+  node_role_arn="${TF_VAR_eks_node_role_arn:-}"
+  access_principal_arn="${TF_VAR_eks_access_principal_arn:-}"
+
+  if [[ -z "${cluster_role_arn}" ]]; then
+    cluster_role_arn="$(resolve_role_arn_by_name_fragment 'LabEksClusterRole')"
+
+    if [[ -z "${cluster_role_arn}" || "${cluster_role_arn}" == "None" ]]; then
+      fail "Nao foi possivel descobrir automaticamente a role do cluster EKS. Configure EKS_CLUSTER_ROLE_ARN nas vars do GitHub."
+    fi
+
+    export TF_VAR_eks_cluster_role_arn="${cluster_role_arn}"
+    log "Usando role descoberta para o cluster EKS: ${cluster_role_arn}"
+  fi
+
+  if [[ -z "${node_role_arn}" ]]; then
+    node_role_arn="$(resolve_role_arn_by_name_fragment 'LabEksNodeRole')"
+
+    if [[ -z "${node_role_arn}" || "${node_role_arn}" == "None" ]]; then
+      fail "Nao foi possivel descobrir automaticamente a role dos nodes EKS. Configure EKS_NODE_ROLE_ARN nas vars do GitHub."
+    fi
+
+    export TF_VAR_eks_node_role_arn="${node_role_arn}"
+    log "Usando role descoberta para os nodes EKS: ${node_role_arn}"
+  fi
+
+  if [[ -z "${access_principal_arn}" ]]; then
+    access_principal_arn="$(resolve_current_principal_arn)"
+    export TF_VAR_eks_access_principal_arn="${access_principal_arn}"
+    log "Usando principal de acesso ao cluster derivado das credenciais atuais: ${access_principal_arn}"
+  fi
+
+  validate_role_account_match "${TF_VAR_eks_cluster_role_arn}" "EKS_CLUSTER_ROLE_ARN" "${current_account}"
+  validate_role_account_match "${TF_VAR_eks_node_role_arn}" "EKS_NODE_ROLE_ARN" "${current_account}"
 }
 
 resolve_shared_infra_name() {
@@ -192,6 +294,11 @@ case "${BOOTSTRAP_TF_STATE_BUCKET}" in
 esac
 
 terraform fmt -check -recursive "${REPO_ROOT}/terraform"
+
+if [[ "${TERRAFORM_ACTION}" != "validate" ]]; then
+  set_eks_role_defaults
+fi
+
 terraform_init
 terraform -chdir="${TERRAFORM_DIR}" validate
 

@@ -31,11 +31,18 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'eks-lab' }}
       TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
       TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'oficina/lab/infra/terraform.tfstate' }}
       TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || 'us-east-1' }}
       TF_STATE_DYNAMODB_TABLE: ${{ vars.TF_STATE_DYNAMODB_TABLE }}
       BOOTSTRAP_TF_STATE_BUCKET: ${{ vars.BOOTSTRAP_TF_STATE_BUCKET || 'true' }}
+      TF_VAR_create_eks: ${{ vars.CREATE_EKS || 'true' }}
+      TF_VAR_eks_cluster_role_arn: ${{ vars.EKS_CLUSTER_ROLE_ARN }}
+      TF_VAR_eks_node_role_arn: ${{ vars.EKS_NODE_ROLE_ARN }}
+      TF_VAR_eks_access_principal_arn: ${{ vars.EKS_ACCESS_PRINCIPAL_ARN }}
+      TF_VAR_skip_final_snapshot: ${{ vars.SKIP_FINAL_SNAPSHOT || 'true' }}
+      TF_VAR_final_snapshot_identifier: ${{ vars.FINAL_SNAPSHOT_IDENTIFIER }}
       TF_VAR_ecr_force_delete: "true"
     steps:
       - name: Checkout

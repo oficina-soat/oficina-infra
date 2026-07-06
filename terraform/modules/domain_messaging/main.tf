@@ -159,15 +159,11 @@ data "aws_iam_policy_document" "producer" {
 
 resource "aws_iam_policy" "producer" {
   for_each = local.producer_policy_services
+  provider = aws.untagged
 
   name        = "${var.policy_name_prefix}-${each.key}-producer"
   description = "Permite ao ${each.key} publicar eventos de dominio nos topicos canonicos."
   policy      = data.aws_iam_policy_document.producer[each.key].json
-
-  tags = merge(local.common_tags, {
-    Service    = each.key
-    PolicyType = "producer"
-  })
 }
 
 data "aws_iam_policy_document" "consumer" {
@@ -192,13 +188,9 @@ data "aws_iam_policy_document" "consumer" {
 
 resource "aws_iam_policy" "consumer" {
   for_each = local.consumer_policy_services
+  provider = aws.untagged
 
   name        = "${var.policy_name_prefix}-${each.key}-consumer"
   description = "Permite ao ${each.key} consumir eventos de dominio das filas canonicas."
   policy      = data.aws_iam_policy_document.consumer[each.key].json
-
-  tags = merge(local.common_tags, {
-    Service    = each.key
-    PolicyType = "consumer"
-  })
 }
