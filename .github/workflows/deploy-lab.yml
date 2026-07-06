@@ -78,14 +78,15 @@ jobs:
       TF_VAR_domain_messaging_sns_kms_master_key_id: ${{ vars.DOMAIN_MESSAGING_SNS_KMS_MASTER_KEY_ID }}
       BOOTSTRAP_SERVICE_DATABASES: ${{ vars.BOOTSTRAP_SERVICE_DATABASES || 'true' }}
       APPLY_K8S: ${{ vars.APPLY_K8S || 'true' }}
-      INSTALL_DATADOG_AGENT: ${{ vars.INSTALL_DATADOG_AGENT || 'false' }}
-      DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
-      DATADOG_SITE: ${{ vars.DATADOG_SITE || 'datadoghq.com' }}
-      DATADOG_NAMESPACE: ${{ vars.DATADOG_NAMESPACE || 'datadog' }}
-      DATADOG_HELM_RELEASE: ${{ vars.DATADOG_HELM_RELEASE || 'datadog-agent' }}
-      DATADOG_API_KEY_SECRET_NAME: ${{ vars.DATADOG_API_KEY_SECRET_NAME || 'datadog-secret' }}
-      DATADOG_API_KEY_SECRET_KEY: ${{ vars.DATADOG_API_KEY_SECRET_KEY || 'api-key' }}
-      DATADOG_LOCAL_SERVICE_NAME: ${{ vars.DATADOG_LOCAL_SERVICE_NAME || 'datadog-agent' }}
+      INSTALL_NEW_RELIC_OTEL_COLLECTOR: ${{ vars.INSTALL_NEW_RELIC_OTEL_COLLECTOR || 'false' }}
+      NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
+      NEW_RELIC_NAMESPACE: ${{ vars.NEW_RELIC_NAMESPACE || 'newrelic' }}
+      NEW_RELIC_OTEL_COLLECTOR_HELM_RELEASE: ${{ vars.NEW_RELIC_OTEL_COLLECTOR_HELM_RELEASE || 'nr-k8s-otel-collector' }}
+      NEW_RELIC_OTEL_COLLECTOR_LOCAL_SERVICE_NAME: ${{ vars.NEW_RELIC_OTEL_COLLECTOR_LOCAL_SERVICE_NAME || 'nr-k8s-otel-collector-gateway' }}
+      NEW_RELIC_LICENSE_KEY_SECRET_NAME: ${{ vars.NEW_RELIC_LICENSE_KEY_SECRET_NAME || 'new-relic-license-key' }}
+      NEW_RELIC_LICENSE_KEY_SECRET_KEY: ${{ vars.NEW_RELIC_LICENSE_KEY_SECRET_KEY || 'licenseKey' }}
+      NEW_RELIC_CLUSTER_NAME: ${{ vars.NEW_RELIC_CLUSTER_NAME || vars.EKS_CLUSTER_NAME || 'eks-lab' }}
+      NEW_RELIC_OTLP_ENDPOINT: ${{ vars.NEW_RELIC_OTLP_ENDPOINT || 'https://otlp.nr-data.net' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -99,7 +100,7 @@ jobs:
         uses: azure/setup-kubectl@v5
 
       - name: Setup Helm
-        if: env.INSTALL_DATADOG_AGENT == 'true'
+        if: env.INSTALL_NEW_RELIC_OTEL_COLLECTOR == 'true'
         uses: azure/setup-helm@v4
 
       - name: Deploy lab infrastructure

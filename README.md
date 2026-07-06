@@ -55,11 +55,11 @@ Este repositório é a fonte canônica dos manifests Kubernetes executáveis dos
 
 Os manifests devem ser materializados em `k8s/base/microservices/<nome-do-servico>/` e referenciados pelo overlay `k8s/overlays/lab/` quando os recursos dependentes do ambiente estiverem prontos.
 
-## Observabilidade Datadog
+## Observabilidade New Relic
 
-O Datadog Agent do ambiente `lab` é instalado via Helm no cluster `eks-lab`, usando API key fornecida por variável/secret de deploy e valores versionados em [k8s/components/datadog-agent/values.lab.yaml](k8s/components/datadog-agent/values.lab.yaml).
+O New Relic OpenTelemetry Collector do ambiente `lab` é instalado via Helm no cluster `eks-lab`, usando license key fornecida por variável/secret de deploy e valores versionados em [k8s/components/new-relic-otel-collector/values.lab.yaml](k8s/components/new-relic-otel-collector/values.lab.yaml).
 
-Documentação operacional: [Datadog Agent no EKS lab](docs/datadog-agent.md).
+Documentação operacional: [New Relic OpenTelemetry Collector no EKS lab](docs/new-relic-otel-collector.md).
 
 Arquivos principais:
 
@@ -71,11 +71,11 @@ Arquivos principais:
 - [terraform/modules/ecr/](terraform/modules/ecr/)
 - [terraform/modules/api_gateway/](terraform/modules/api_gateway/)
 - [k8s/overlays/lab/](k8s/overlays/lab/)
-- [k8s/components/datadog-agent/values.lab.yaml](k8s/components/datadog-agent/values.lab.yaml)
+- [k8s/components/new-relic-otel-collector/values.lab.yaml](k8s/components/new-relic-otel-collector/values.lab.yaml)
 - [compose.local.yml](compose.local.yml)
 - [scripts/local/bootstrap-local.sh](scripts/local/bootstrap-local.sh)
 - [scripts/manual/bootstrap-service-databases.sh](scripts/manual/bootstrap-service-databases.sh)
-- [scripts/manual/install-datadog-agent.sh](scripts/manual/install-datadog-agent.sh)
+- [scripts/manual/install-new-relic-otel-collector.sh](scripts/manual/install-new-relic-otel-collector.sh)
 - [scripts/actions/ci-deploy.sh](scripts/actions/ci-deploy.sh)
 
 ## Validação local
@@ -101,7 +101,7 @@ Variáveis mínimas esperadas:
 - `VPC_ID` e `SUBNET_IDS`, quando a rede não for criada pelo Terraform
 - `CREATE_EXECUTION_DYNAMODB=false`, quando as tabelas DynamoDB não devem ser criadas pelo workflow
 - `CREATE_DOMAIN_MESSAGING=false`, quando SNS/SQS da Fase 4 não devem ser criados pelo workflow
-- `INSTALL_DATADOG_AGENT=true`, `DATADOG_API_KEY` e `DATADOG_SITE`, quando o Agent Datadog deve ser instalado no cluster
+- `INSTALL_NEW_RELIC_OTEL_COLLECTOR=true`, `NEW_RELIC_LICENSE_KEY` e `NEW_RELIC_OTLP_ENDPOINT`, quando o New Relic OpenTelemetry Collector deve ser instalado no cluster
 
 Comando local equivalente:
 
