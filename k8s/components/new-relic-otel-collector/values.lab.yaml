@@ -1,0 +1,40 @@
+cluster: NEW_RELIC_CLUSTER_NAME_PLACEHOLDER
+customSecretName: NEW_RELIC_LICENSE_KEY_SECRET_NAME_PLACEHOLDER
+customSecretLicenseKey: NEW_RELIC_LICENSE_KEY_SECRET_KEY_PLACEHOLDER
+
+labels:
+  project: oficina
+  env: lab
+  deployment_environment: lab
+  service_namespace: oficina
+
+podLabels:
+  project: oficina
+  env: lab
+  deployment_environment: lab
+  service_namespace: oficina
+
+lowDataMode: true
+
+receivers:
+  prometheus:
+    enabled: true
+    scrapeInterval: 1m
+  k8sEvents:
+    enabled: true
+  hostmetrics:
+    enabled: true
+    scrapeInterval: 1m
+  kubeletstats:
+    enabled: true
+    scrapeInterval: 1m
+  filelog:
+    enabled: true
+
+deployment:
+  extraArgs:
+    - "--config=yaml:exporters::otlp_http/newrelic::endpoint: NEW_RELIC_OTLP_ENDPOINT_PLACEHOLDER"
+
+daemonset:
+  extraArgs:
+    - "--config=yaml:exporters::otlp_http/newrelic::endpoint: NEW_RELIC_OTLP_ENDPOINT_PLACEHOLDER"

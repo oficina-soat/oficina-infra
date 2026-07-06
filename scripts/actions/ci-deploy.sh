@@ -11,7 +11,7 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME:-eks-lab}"
 APPLY_K8S="${APPLY_K8S:-true}"
 BOOTSTRAP_SERVICE_DATABASES="${BOOTSTRAP_SERVICE_DATABASES:-true}"
-INSTALL_DATADOG_AGENT="${INSTALL_DATADOG_AGENT:-false}"
+INSTALL_NEW_RELIC_OTEL_COLLECTOR="${INSTALL_NEW_RELIC_OTEL_COLLECTOR:-false}"
 
 require_cmd aws
 require_cmd terraform
@@ -35,7 +35,7 @@ if [[ "${APPLY_K8S}" == "true" ]]; then
   kubectl apply -k "${REPO_ROOT}/k8s/overlays/lab"
 fi
 
-if [[ "${INSTALL_DATADOG_AGENT}" == "true" ]]; then
-  log "Instalando Datadog Agent"
-  SKIP_KUBECONFIG_UPDATE="${APPLY_K8S}" "${REPO_ROOT}/scripts/manual/install-datadog-agent.sh"
+if [[ "${INSTALL_NEW_RELIC_OTEL_COLLECTOR}" == "true" ]]; then
+  log "Instalando New Relic OpenTelemetry Collector"
+  SKIP_KUBECONFIG_UPDATE="${APPLY_K8S}" "${REPO_ROOT}/scripts/manual/install-new-relic-otel-collector.sh"
 fi
