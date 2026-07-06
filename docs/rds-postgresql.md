@@ -46,9 +46,9 @@ Use este fluxo apenas quando a instância `oficina-postgres-lab` ainda não exis
 
 ```bash
 cp terraform/environments/lab/terraform.tfvars.example terraform/environments/lab/terraform.tfvars
-terraform -chdir=terraform/environments/lab init
-terraform -chdir=terraform/environments/lab plan
-terraform -chdir=terraform/environments/lab apply
+TERRAFORM_ACTION=init scripts/actions/ci-terraform.sh
+TERRAFORM_ACTION=plan scripts/actions/ci-terraform.sh
+TERRAFORM_ACTION=apply scripts/actions/ci-terraform.sh
 ```
 
 Após o apply, execute o bootstrap:
@@ -60,6 +60,8 @@ scripts/manual/bootstrap-service-databases.sh
 O script lê `db_endpoint`, `db_port`, `db_username` e `db_master_user_secret_arn` dos outputs Terraform quando as variáveis equivalentes não forem informadas.
 
 O deploy automatizado executa o mesmo bootstrap por [scripts/actions/ci-deploy.sh](../scripts/actions/ci-deploy.sh), desde que `BOOTSTRAP_SERVICE_DATABASES=true`.
+
+O bucket S3 do backend remoto é criado automaticamente por [scripts/actions/ci-terraform.sh](../scripts/actions/ci-terraform.sh) quando `BOOTSTRAP_TF_STATE_BUCKET=true`, que é o padrão do CI. Use `BOOTSTRAP_TF_STATE_BUCKET=false` apenas quando o bucket já for provisionado por outro fluxo e a execução deve falhar caso ele não exista.
 
 ## Adoção do RDS existente
 
