@@ -13,15 +13,15 @@ db_username   = "oficina_master"
 vpc_id     = null
 subnet_ids = []
 
-allowed_security_group_ids = ["sg-xxxxxxxxxxxxxxxxx"]
+allowed_security_group_ids = []
 allowed_cidr_blocks       = []
 
 instance_class            = "db.t4g.micro"
 deletion_protection       = true
-skip_final_snapshot       = false
-final_snapshot_identifier = "oficina-postgres-lab-final"
+skip_final_snapshot       = true
+final_snapshot_identifier = null
 
-create_eks           = false
+create_eks           = true
 cluster_name         = "eks-lab"
 kubernetes_version   = "1.35"
 eks_cluster_role_arn = "arn:aws:iam::<aws-account-id>:role/<lab-eks-cluster-role>"

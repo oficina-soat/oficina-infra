@@ -231,11 +231,10 @@ data "aws_iam_policy_document" "runtime_access" {
 }
 
 resource "aws_iam_policy" "runtime_access" {
-  count = var.create_runtime_iam_policy ? 1 : 0
+  count    = var.create_runtime_iam_policy ? 1 : 0
+  provider = aws.untagged
 
   name        = "${var.table_prefix}-runtime-dynamodb"
   description = "Acesso runtime do oficina-execution-service as tabelas DynamoDB da Fase 4."
   policy      = data.aws_iam_policy_document.runtime_access.json
-
-  tags = local.common_tags
 }

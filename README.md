@@ -100,7 +100,9 @@ Variáveis mínimas esperadas:
 - `BOOTSTRAP_TF_STATE_BUCKET=true`, para criar/configurar automaticamente o bucket S3 do backend antes do `terraform init`
 - `AWS_REGION=us-east-1`
 - `EKS_CLUSTER_NAME=eks-lab`
-- `EKS_CLUSTER_ROLE_ARN` e `EKS_NODE_ROLE_ARN`, quando `CREATE_EKS=true`
+- `CREATE_EKS=true`, padrão do workflow para manter o lab alinhado ao deploy Kubernetes
+- `EKS_CLUSTER_ROLE_ARN` e `EKS_NODE_ROLE_ARN`, quando `CREATE_EKS=true`; no VocLabs, [scripts/actions/ci-terraform.sh](scripts/actions/ci-terraform.sh) tenta descobrir automaticamente roles com `LabEksClusterRole` e `LabEksNodeRole` no nome quando essas variáveis não forem informadas
+- `SKIP_FINAL_SNAPSHOT=true`, padrão do workflow para destruir o RDS de lab sem exigir `FINAL_SNAPSHOT_IDENTIFIER`
 - `VPC_ID` e `SUBNET_IDS`, quando a rede não for criada pelo Terraform
 - `CREATE_EXECUTION_DYNAMODB=false`, quando as tabelas DynamoDB não devem ser criadas pelo workflow
 - `CREATE_DOMAIN_MESSAGING=false`, quando SNS/SQS da Fase 4 não devem ser criados pelo workflow

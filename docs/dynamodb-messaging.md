@@ -63,6 +63,8 @@ As políticas IAM de mensageria são separadas por serviço:
 
 Essas políticas são criadas para anexação posterior às roles dos workloads Kubernetes. O módulo não cria roles de serviço nem altera service accounts.
 
+Por compatibilidade com o VocLabs, as IAM managed policies são criadas sem tags. A role do laboratório permite criar policies, mas pode negar `iam:TagPolicy`; os demais recursos de SNS, SQS e DynamoDB permanecem tagueados pelo provider padrão.
+
 ## Outputs
 
 Use os outputs do ambiente `lab` para integrar pipelines, manifests e documentação operacional:

@@ -15,6 +15,9 @@ locals {
   input_eks_node_role_arn = (
     var.eks_node_role_arn != null && trimspace(var.eks_node_role_arn) != "" ? var.eks_node_role_arn : null
   )
+  input_final_snapshot_identifier = (
+    var.final_snapshot_identifier != null && trimspace(var.final_snapshot_identifier) != "" ? var.final_snapshot_identifier : null
+  )
   default_tags = merge(var.tags, {
     Project               = "oficina"
     Environment           = var.environment
@@ -192,7 +195,7 @@ check "eks_role_inputs" {
 
 check "final_snapshot_inputs" {
   assert {
-    condition     = var.skip_final_snapshot || var.final_snapshot_identifier != null
+    condition     = var.skip_final_snapshot || local.input_final_snapshot_identifier != null
     error_message = "Informe final_snapshot_identifier quando skip_final_snapshot=false."
   }
 }
@@ -217,7 +220,7 @@ module "rds_postgres" {
   allowed_cidr_blocks        = var.allowed_cidr_blocks
   deletion_protection        = var.deletion_protection
   skip_final_snapshot        = var.skip_final_snapshot
-  final_snapshot_identifier  = var.final_snapshot_identifier
+  final_snapshot_identifier  = local.input_final_snapshot_identifier
   tags                       = local.default_tags
 }
 
@@ -284,6 +287,11 @@ module "execution_dynamodb" {
   count  = var.create_execution_dynamodb ? 1 : 0
   source = "../../modules/dynamodb_execution"
 
+  providers = {
+    aws          = aws
+    aws.untagged = aws.untagged
+  }
+
   table_prefix                   = local.execution_dynamodb_table_prefix
   point_in_time_recovery_enabled = var.execution_dynamodb_point_in_time_recovery_enabled
   deletion_protection_enabled    = var.execution_dynamodb_deletion_protection_enabled
@@ -295,6 +303,11 @@ module "execution_dynamodb" {
 module "domain_messaging" {
   count  = var.create_domain_messaging ? 1 : 0
   source = "../../modules/domain_messaging"
+
+  providers = {
+    aws          = aws
+    aws.untagged = aws.untagged
+  }
 
   routes                           = local.domain_event_routes
   policy_name_prefix               = "oficina-${var.environment}-domain-messaging"
