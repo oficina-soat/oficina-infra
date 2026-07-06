@@ -57,6 +57,7 @@ jobs:
       TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'oficina/lab/infra/terraform.tfstate' }}
       TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || 'us-east-1' }}
       TF_STATE_DYNAMODB_TABLE: ${{ vars.TF_STATE_DYNAMODB_TABLE }}
+      BOOTSTRAP_TF_STATE_BUCKET: ${{ vars.BOOTSTRAP_TF_STATE_BUCKET || 'true' }}
       TF_VAR_create_network_if_missing: ${{ vars.CREATE_NETWORK_IF_MISSING || 'true' }}
       TF_VAR_vpc_id: ${{ vars.VPC_ID }}
       TF_VAR_subnet_ids: ${{ vars.SUBNET_IDS || '[]' }}
