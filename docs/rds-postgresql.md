@@ -65,6 +65,8 @@ O bucket S3 do backend remoto é criado automaticamente por [scripts/actions/ci-
 
 No workflow de lab, `CREATE_EKS=true` é o padrão para que o security group do cluster seja autorizado automaticamente no RDS. O script [scripts/actions/ci-terraform.sh](../scripts/actions/ci-terraform.sh) também usa `SKIP_FINAL_SNAPSHOT=true` por padrão, evitando a exigência de `FINAL_SNAPSHOT_IDENTIFIER` nas execuções automatizadas do ambiente `lab`.
 
+Para o destroy do lab, `DELETE_AUTOMATED_BACKUPS=true` também é o padrão. Esse valor remove os backups automáticos retidos pela AWS quando a instância RDS é destruída. Ele não remove snapshots manuais já existentes; snapshots manuais são artefatos independentes e precisam de limpeza operacional explícita quando não forem mais necessários.
+
 ## Adoção do RDS existente
 
 Quando o RDS `oficina-postgres-lab` já existir no state legado de `oficina-infra-db`, não execute um `apply` direto com state vazio. Primeiro importe os recursos existentes para o state do `oficina-infra`:

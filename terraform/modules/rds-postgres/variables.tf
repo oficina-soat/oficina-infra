@@ -92,6 +92,12 @@ variable "skip_final_snapshot" {
   default     = false
 }
 
+variable "delete_automated_backups" {
+  type        = bool
+  description = "Remove backups automaticos quando a instancia for destruida."
+  default     = true
+}
+
 variable "final_snapshot_identifier" {
   type        = string
   description = "Identificador do snapshot final quando skip_final_snapshot=false."

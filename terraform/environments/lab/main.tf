@@ -216,6 +216,7 @@ module "rds_postgres" {
   allowed_cidr_blocks        = var.allowed_cidr_blocks
   deletion_protection        = var.deletion_protection
   skip_final_snapshot        = var.skip_final_snapshot
+  delete_automated_backups   = var.delete_automated_backups
   final_snapshot_identifier  = local.input_final_snapshot_identifier
   tags                       = local.default_tags
 }

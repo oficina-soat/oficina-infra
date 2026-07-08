@@ -19,6 +19,7 @@ allowed_cidr_blocks       = []
 instance_class            = "db.t4g.micro"
 deletion_protection       = true
 skip_final_snapshot       = true
+delete_automated_backups  = true
 final_snapshot_identifier = null
 
 create_eks           = true
