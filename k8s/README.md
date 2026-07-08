@@ -2,10 +2,10 @@
 
 Estrutura Kubernetes do ambiente `lab`.
 
-- [components/aws-observability/](components/aws-observability/) define recursos de observabilidade AWS-native reutilizáveis.
+- [components/aws-observability/](components/aws-observability/) mantém manifests AWS-native legados como referência de migração; o overlay `lab` não aplica esse componente porque a observabilidade canônica usa New Relic.
 - [components/new-relic-otel-collector/values.lab.yaml](components/new-relic-otel-collector/values.lab.yaml) define os valores Helm do New Relic OpenTelemetry Collector do ambiente `lab`.
 - [components/mailhog/](components/mailhog/) mantém o MailHog usado pelos fluxos de notificação em laboratório.
-- [overlays/lab/](overlays/lab/) renderiza os componentes compartilhados do cluster.
+- [overlays/lab/](overlays/lab/) renderiza os componentes compartilhados do cluster que não dependem de instalação Helm.
 
 O New Relic OpenTelemetry Collector não é referenciado pelo overlay Kustomize porque sua instalação canônica usa o chart Helm `newrelic/nr-k8s-otel-collector`. Use [New Relic OpenTelemetry Collector no EKS lab](../docs/new-relic-otel-collector.md) e [scripts/manual/install-new-relic-otel-collector.sh](../scripts/manual/install-new-relic-otel-collector.sh) para instalar ou atualizar o release.
 
