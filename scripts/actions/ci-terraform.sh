@@ -17,6 +17,7 @@ export TF_VAR_cluster_name="${TF_VAR_cluster_name:-${EKS_CLUSTER_NAME}}"
 export TF_VAR_shared_infra_name="${TF_VAR_shared_infra_name:-${SHARED_INFRA_NAME}}"
 export TF_VAR_create_eks="${TF_VAR_create_eks:-true}"
 export TF_VAR_skip_final_snapshot="${TF_VAR_skip_final_snapshot:-true}"
+export TF_VAR_delete_automated_backups="${TF_VAR_delete_automated_backups:-true}"
 TF_STATE_BUCKET="${TF_STATE_BUCKET:-}"
 TF_STATE_KEY="${TF_STATE_KEY:-oficina/lab/infra/terraform.tfstate}"
 TF_STATE_REGION="${TF_STATE_REGION:-${AWS_REGION}}"
@@ -38,6 +39,7 @@ Variaveis suportadas:
   BOOTSTRAP_TF_STATE_BUCKET true|false para criar/configurar o bucket S3 antes do init. Default: true
   TF_VAR_create_eks         true|false para criar o EKS compartilhado. Default do script: true
   TF_VAR_skip_final_snapshot true|false para pular snapshot final do RDS no destroy. Default do script: true
+  TF_VAR_delete_automated_backups true|false para remover backups automaticos do RDS no destroy. Default do script: true
 EOF
 }
 

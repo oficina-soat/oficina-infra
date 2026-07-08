@@ -121,7 +121,7 @@ resource "aws_db_instance" "this" {
   publicly_accessible                 = var.publicly_accessible
   apply_immediately                   = var.apply_immediately
   deletion_protection                 = var.deletion_protection
-  delete_automated_backups            = false
+  delete_automated_backups            = var.delete_automated_backups
   skip_final_snapshot                 = var.skip_final_snapshot
   final_snapshot_identifier           = var.skip_final_snapshot ? null : var.final_snapshot_identifier
   iam_database_authentication_enabled = false

@@ -414,6 +414,12 @@ variable "skip_final_snapshot" {
   default     = true
 }
 
+variable "delete_automated_backups" {
+  type        = bool
+  description = "Remove backups automaticos do RDS no destroy do lab."
+  default     = true
+}
+
 variable "final_snapshot_identifier" {
   type        = string
   description = "Identificador do snapshot final quando skip_final_snapshot=false."
