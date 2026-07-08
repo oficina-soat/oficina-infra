@@ -49,6 +49,7 @@ EOF
 read_tf_output() {
   local name="$1"
 
+  require_cmd terraform
   terraform -chdir="${TERRAFORM_DIR}" output -raw "${name}" 2>/dev/null || true
 }
 
@@ -142,15 +143,14 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   exit 0
 fi
 
-require_cmd terraform
 require_cmd psql
-require_cmd jq
 
-if [[ -z "${MASTER_SECRET_ARN}" ]]; then
+if [[ -z "${MASTER_SECRET_ARN}" && ( -z "${DB_HOST}" || -z "${DB_PORT}" || -z "${MASTER_DB_USER}" || -z "${MASTER_DB_PASSWORD}" ) ]]; then
   MASTER_SECRET_ARN="$(read_tf_output db_master_user_secret_arn)"
 fi
 
 if [[ -n "${MASTER_SECRET_ARN}" ]]; then
+  require_cmd jq
   MASTER_SECRET_JSON="$(read_master_secret_json)"
   [[ -n "${DB_HOST}" ]] || DB_HOST="$(json_field "${MASTER_SECRET_JSON}" host)"
   [[ -n "${DB_PORT}" ]] || DB_PORT="$(json_field "${MASTER_SECRET_JSON}" port)"

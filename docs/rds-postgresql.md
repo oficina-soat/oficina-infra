@@ -21,7 +21,8 @@ O padrão implementado segue o contrato canônico do `oficina-platform`:
 |---|---|
 | [terraform/modules/rds-postgres/](../terraform/modules/rds-postgres/) | Módulo Terraform da instância RDS, subnet group, security group, parameter group e logs. |
 | [terraform/environments/lab/](../terraform/environments/lab/) | Ambiente canônico `lab` com state remoto `oficina/lab/infra/terraform.tfstate`. |
-| [scripts/manual/bootstrap-service-databases.sh](../scripts/manual/bootstrap-service-databases.sh) | Bootstrap idempotente dos databases, owners, permissões e secrets por serviço. |
+| [scripts/manual/bootstrap-service-databases.sh](../scripts/manual/bootstrap-service-databases.sh) | Bootstrap idempotente dos databases, owners, permissões e secrets por serviço quando o executor tem rota direta para o RDS. |
+| [scripts/manual/bootstrap-service-databases-k8s.sh](../scripts/manual/bootstrap-service-databases-k8s.sh) | Bootstrap idempotente por Job efêmero no EKS, usado pelo deploy automatizado para acessar o RDS privado dentro da VPC. |
 
 ## Isolamento
 
@@ -59,7 +60,9 @@ scripts/manual/bootstrap-service-databases.sh
 
 O script lê `db_endpoint`, `db_port`, `db_username` e `db_master_user_secret_arn` dos outputs Terraform quando as variáveis equivalentes não forem informadas.
 
-O deploy automatizado executa o mesmo bootstrap por [scripts/actions/ci-deploy.sh](../scripts/actions/ci-deploy.sh), desde que `BOOTSTRAP_SERVICE_DATABASES=true`.
+O deploy automatizado executa o bootstrap por [scripts/actions/ci-deploy.sh](../scripts/actions/ci-deploy.sh), desde que `BOOTSTRAP_SERVICE_DATABASES=true`. O padrão é `BOOTSTRAP_SERVICE_DATABASES_MODE=k8s`, que cria um Job efêmero no EKS usando [scripts/manual/bootstrap-service-databases-k8s.sh](../scripts/manual/bootstrap-service-databases-k8s.sh). Esse fluxo mantém o RDS privado: o runner do GitHub lê o secret master e atualiza os secrets dos serviços no AWS Secrets Manager, enquanto apenas a conexão `psql` roda dentro da VPC.
+
+Use `BOOTSTRAP_SERVICE_DATABASES_MODE=local` somente em execução manual a partir de uma rede que tenha rota direta para o endpoint privado do RDS.
 
 O bucket S3 do backend remoto é criado automaticamente por [scripts/actions/ci-terraform.sh](../scripts/actions/ci-terraform.sh) quando `BOOTSTRAP_TF_STATE_BUCKET=true`, que é o padrão do CI. Use `BOOTSTRAP_TF_STATE_BUCKET=false` apenas quando o bucket já for provisionado por outro fluxo e a execução deve falhar caso ele não exista.
 

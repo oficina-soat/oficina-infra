@@ -81,6 +81,10 @@ jobs:
       TF_VAR_domain_messaging_raw_message_delivery: ${{ vars.DOMAIN_MESSAGING_RAW_MESSAGE_DELIVERY || 'true' }}
       TF_VAR_domain_messaging_sns_kms_master_key_id: ${{ vars.DOMAIN_MESSAGING_SNS_KMS_MASTER_KEY_ID }}
       BOOTSTRAP_SERVICE_DATABASES: ${{ vars.BOOTSTRAP_SERVICE_DATABASES || 'true' }}
+      BOOTSTRAP_SERVICE_DATABASES_MODE: ${{ vars.BOOTSTRAP_SERVICE_DATABASES_MODE || 'k8s' }}
+      DB_BOOTSTRAP_NAMESPACE: ${{ vars.DB_BOOTSTRAP_NAMESPACE || 'default' }}
+      DB_BOOTSTRAP_IMAGE: ${{ vars.DB_BOOTSTRAP_IMAGE || 'postgres:16' }}
+      DB_BOOTSTRAP_TIMEOUT: ${{ vars.DB_BOOTSTRAP_TIMEOUT || '300s' }}
       APPLY_K8S: ${{ vars.APPLY_K8S || 'true' }}
       INSTALL_NEW_RELIC_OTEL_COLLECTOR: ${{ vars.INSTALL_NEW_RELIC_OTEL_COLLECTOR || 'false' }}
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
