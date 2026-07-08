@@ -118,7 +118,7 @@ bootstrap_database() {
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION', :'username', :'password')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'username')\gexec
 
-SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION', :'username', :'password')\gexec
+SELECT format('ALTER ROLE %I WITH LOGIN PASSWORD %L', :'username', :'password')\gexec
 
 SELECT format('CREATE DATABASE %I OWNER %I', :'database', :'username')
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'database')\gexec
