@@ -31,11 +31,7 @@ locals {
     try(module.network[0].vpc_id, null),
   )
   resolved_subnet_ids = length(var.subnet_ids) > 0 ? var.subnet_ids : try(module.network[0].public_subnet_ids, [])
-  resolved_allowed_security_group_ids = distinct(concat(
-    var.allowed_security_group_ids,
-    try([module.eks[0].cluster_security_group_id], []),
-  ))
-  api_gateway_name = coalesce(local.input_api_gateway_name, "${var.shared_infra_name}-http-api")
+  api_gateway_name    = coalesce(local.input_api_gateway_name, "${var.shared_infra_name}-http-api")
   terraform_shared_data_bucket_name = coalesce(
     local.input_terraform_shared_data_bucket_name,
     "tf-shared-${var.shared_infra_name}-${data.aws_caller_identity.current.account_id}-${var.region}",
@@ -181,7 +177,7 @@ check "network_inputs" {
 
 check "database_access_inputs" {
   assert {
-    condition     = !var.create_rds || var.create_eks || length(local.resolved_allowed_security_group_ids) > 0 || length(var.allowed_cidr_blocks) > 0
+    condition     = !var.create_rds || var.create_eks || length(var.allowed_security_group_ids) > 0 || length(var.allowed_cidr_blocks) > 0
     error_message = "Informe allowed_security_group_ids, allowed_cidr_blocks ou habilite create_eks para permitir acesso ao RDS."
   }
 }
@@ -216,7 +212,7 @@ module "rds_postgres" {
   instance_class             = var.instance_class
   vpc_id                     = local.resolved_vpc_id
   subnet_ids                 = local.resolved_subnet_ids
-  allowed_security_group_ids = local.resolved_allowed_security_group_ids
+  allowed_security_group_ids = var.allowed_security_group_ids
   allowed_cidr_blocks        = var.allowed_cidr_blocks
   deletion_protection        = var.deletion_protection
   skip_final_snapshot        = var.skip_final_snapshot
@@ -252,6 +248,17 @@ module "eks" {
   desired_size                 = var.desired_size
   min_size                     = var.min_size
   max_size                     = var.max_size
+}
+
+resource "aws_vpc_security_group_ingress_rule" "rds_from_eks_cluster" {
+  count = var.create_rds && var.create_eks ? 1 : 0
+
+  security_group_id            = module.rds_postgres[0].security_group_id
+  referenced_security_group_id = module.eks[0].cluster_security_group_id
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  description                  = "PostgreSQL a partir do security group do cluster EKS ${var.cluster_name}"
 }
 
 module "ecr" {
