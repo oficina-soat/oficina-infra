@@ -75,6 +75,7 @@ Arquivos principais:
 - [compose.local.yml](compose.local.yml)
 - [scripts/local/bootstrap-local.sh](scripts/local/bootstrap-local.sh)
 - [scripts/manual/bootstrap-service-databases.sh](scripts/manual/bootstrap-service-databases.sh)
+- [scripts/manual/bootstrap-service-databases-k8s.sh](scripts/manual/bootstrap-service-databases-k8s.sh)
 - [scripts/manual/install-new-relic-otel-collector.sh](scripts/manual/install-new-relic-otel-collector.sh)
 - [scripts/actions/ci-deploy.sh](scripts/actions/ci-deploy.sh)
 
@@ -105,6 +106,8 @@ Variáveis mínimas esperadas:
 - `SKIP_FINAL_SNAPSHOT=true`, padrão do workflow para destruir o RDS de lab sem exigir `FINAL_SNAPSHOT_IDENTIFIER`
 - `DELETE_AUTOMATED_BACKUPS=true`, padrão do workflow para remover backups automáticos do RDS no destroy do lab
 - `VPC_ID` e `SUBNET_IDS`, quando a rede não for criada pelo Terraform
+- `BOOTSTRAP_SERVICE_DATABASES_MODE=k8s`, padrão do workflow para executar o bootstrap PostgreSQL por Job efêmero dentro do EKS; use `local` apenas quando o runner tiver rota direta para o RDS
+- `DB_BOOTSTRAP_NAMESPACE`, `DB_BOOTSTRAP_IMAGE` e `DB_BOOTSTRAP_TIMEOUT`, opcionais para customizar o Job efêmero de bootstrap dos databases
 - `CREATE_EXECUTION_DYNAMODB=false`, quando as tabelas DynamoDB não devem ser criadas pelo workflow
 - `CREATE_DOMAIN_MESSAGING=false`, quando SNS/SQS da Fase 4 não devem ser criados pelo workflow
 - `INSTALL_NEW_RELIC_OTEL_COLLECTOR=true`, `NEW_RELIC_LICENSE_KEY` e `NEW_RELIC_OTLP_ENDPOINT`, quando o New Relic OpenTelemetry Collector deve ser instalado no cluster
