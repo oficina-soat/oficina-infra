@@ -90,7 +90,7 @@ find scripts -type f -name '*.sh' -print0 | xargs -0 bash -n
 
 ## Deploy
 
-O deploy automatizado usa o GitHub Environment `lab` e o state remoto `oficina/lab/infra/terraform.tfstate`.
+O deploy automatizado usa o state remoto `oficina/lab/infra/terraform.tfstate`. Os workflows não declaram GitHub Environment para evitar aprovação manual; secrets e variáveis devem ficar em nível de repositório ou organização.
 Quando `TF_STATE_BUCKET` não for informado, o script deriva o bucket canônico a partir da conta AWS da execução, no formato `tf-shared-eks-lab-<aws-account-id>-us-east-1`.
 
 Por padrão, [scripts/actions/ci-terraform.sh](scripts/actions/ci-terraform.sh) cria e configura esse bucket antes do `terraform init` quando ele ainda não existe, aplicando versionamento, criptografia SSE-S3, bloqueio de acesso público e ownership `BucketOwnerEnforced`. Para exigir um bucket pré-criado, defina `BOOTSTRAP_TF_STATE_BUCKET=false`.

@@ -19,8 +19,6 @@ jobs:
   destroy:
     if: inputs.confirm_destroy == 'DESTROY'
     runs-on: ubuntu-latest
-    environment:
-      name: lab
     permissions:
       contents: read
     env:
