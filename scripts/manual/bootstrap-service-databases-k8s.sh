@@ -144,6 +144,15 @@ show_job_diagnostics() {
     --selector "job-name=${DB_BOOTSTRAP_JOB_NAME}" || true
 }
 
+ensure_namespace() {
+  if kubectl get namespace "${DB_BOOTSTRAP_NAMESPACE}" >/dev/null 2>&1; then
+    log "Namespace ${DB_BOOTSTRAP_NAMESPACE} ja existe"
+    return
+  fi
+
+  kubectl create namespace "${DB_BOOTSTRAP_NAMESPACE}"
+}
+
 create_bootstrap_secret() {
   kubectl create secret generic "${DB_BOOTSTRAP_SECRET_NAME}" \
     --namespace "${DB_BOOTSTRAP_NAMESPACE}" \
@@ -217,6 +226,44 @@ spec:
 YAML
 }
 
+wait_for_bootstrap_job() {
+  local complete_pid failed_pid complete_log failed_log
+
+  complete_log="$(mktemp)"
+  failed_log="$(mktemp)"
+
+  kubectl wait \
+    --namespace "${DB_BOOTSTRAP_NAMESPACE}" \
+    --for=condition=complete \
+    --timeout="${DB_BOOTSTRAP_TIMEOUT}" \
+    "job/${DB_BOOTSTRAP_JOB_NAME}" >"${complete_log}" 2>&1 &
+  complete_pid=$!
+
+  kubectl wait \
+    --namespace "${DB_BOOTSTRAP_NAMESPACE}" \
+    --for=condition=failed \
+    --timeout="${DB_BOOTSTRAP_TIMEOUT}" \
+    "job/${DB_BOOTSTRAP_JOB_NAME}" >"${failed_log}" 2>&1 &
+  failed_pid=$!
+
+  while kill -0 "${complete_pid}" 2>/dev/null && kill -0 "${failed_pid}" 2>/dev/null; do
+    sleep 1
+  done
+
+  if ! kill -0 "${complete_pid}" 2>/dev/null && wait "${complete_pid}"; then
+    kill "${failed_pid}" >/dev/null 2>&1 || true
+    wait "${failed_pid}" >/dev/null 2>&1 || true
+    rm -f "${complete_log}" "${failed_log}"
+    return 0
+  fi
+
+  kill "${complete_pid}" "${failed_pid}" >/dev/null 2>&1 || true
+  wait "${complete_pid}" >/dev/null 2>&1 || true
+  wait "${failed_pid}" >/dev/null 2>&1 || true
+  rm -f "${complete_log}" "${failed_log}"
+  return 1
+}
+
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   usage
   exit 0
@@ -251,7 +298,7 @@ require_non_empty "${OS_DB_PASSWORD}" "OS_DB_PASSWORD"
 require_non_empty "${BILLING_DB_PASSWORD}" "BILLING_DB_PASSWORD"
 
 log "Garantindo namespace ${DB_BOOTSTRAP_NAMESPACE} para bootstrap dos databases"
-kubectl create namespace "${DB_BOOTSTRAP_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+ensure_namespace
 
 cleanup_k8s_objects
 trap cleanup_k8s_objects EXIT
@@ -263,11 +310,7 @@ create_bootstrap_secret
 create_bootstrap_configmap
 run_bootstrap_job
 
-if ! kubectl wait \
-  --namespace "${DB_BOOTSTRAP_NAMESPACE}" \
-  --for=condition=complete \
-  --timeout="${DB_BOOTSTRAP_TIMEOUT}" \
-  "job/${DB_BOOTSTRAP_JOB_NAME}"; then
+if ! wait_for_bootstrap_job; then
   show_job_diagnostics
   fail "Bootstrap dos databases via Kubernetes Job falhou"
 fi

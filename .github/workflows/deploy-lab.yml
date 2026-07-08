@@ -40,8 +40,6 @@ jobs:
     needs: validate
     if: github.ref_name == 'main'
     runs-on: ubuntu-latest
-    environment:
-      name: lab
     permissions:
       contents: read
     env:

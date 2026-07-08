@@ -41,7 +41,7 @@ UPSERT_NEW_RELIC_SECRET=false scripts/manual/install-new-relic-otel-collector.sh
 
 ## Deploy automatizado
 
-No GitHub Environment `lab`, configure:
+No repositório ou na organização GitHub, configure:
 
 - secret `NEW_RELIC_LICENSE_KEY`;
 - variável `INSTALL_NEW_RELIC_OTEL_COLLECTOR=true`;
