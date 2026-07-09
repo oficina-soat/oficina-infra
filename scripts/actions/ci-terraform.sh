@@ -16,8 +16,10 @@ export TF_VAR_region="${TF_VAR_region:-${AWS_REGION}}"
 export TF_VAR_cluster_name="${TF_VAR_cluster_name:-${EKS_CLUSTER_NAME}}"
 export TF_VAR_shared_infra_name="${TF_VAR_shared_infra_name:-${SHARED_INFRA_NAME}}"
 export TF_VAR_create_eks="${TF_VAR_create_eks:-true}"
+export TF_VAR_deletion_protection="${TF_VAR_deletion_protection:-false}"
 export TF_VAR_skip_final_snapshot="${TF_VAR_skip_final_snapshot:-true}"
 export TF_VAR_delete_automated_backups="${TF_VAR_delete_automated_backups:-true}"
+export TF_VAR_ecr_force_delete="${TF_VAR_ecr_force_delete:-false}"
 TF_STATE_BUCKET="${TF_STATE_BUCKET:-}"
 TF_STATE_KEY="${TF_STATE_KEY:-oficina/lab/infra/terraform.tfstate}"
 TF_STATE_REGION="${TF_STATE_REGION:-${AWS_REGION}}"
@@ -38,8 +40,10 @@ Variaveis suportadas:
   TF_STATE_DYNAMODB_TABLE   Tabela DynamoDB opcional para lock
   BOOTSTRAP_TF_STATE_BUCKET true|false para criar/configurar o bucket S3 antes do init. Default: true
   TF_VAR_create_eks         true|false para criar o EKS compartilhado. Default do script: true
+  TF_VAR_deletion_protection true|false para proteger o RDS contra exclusao. Default do script: false
   TF_VAR_skip_final_snapshot true|false para pular snapshot final do RDS no destroy. Default do script: true
   TF_VAR_delete_automated_backups true|false para remover backups automaticos do RDS no destroy. Default do script: true
+  TF_VAR_ecr_force_delete   true|false para destruir repositorios ECR com imagens. Default do script: false; em destroy: true
 EOF
 }
 
@@ -272,6 +276,56 @@ terraform_init() {
   terraform -chdir="${TERRAFORM_DIR}" init -input=false "${backend_args[@]}"
 }
 
+prepare_destroy_defaults() {
+  if [[ "${TERRAFORM_ACTION}" != "destroy" ]]; then
+    return
+  fi
+
+  export TF_VAR_deletion_protection=false
+  export TF_VAR_skip_final_snapshot=true
+  export TF_VAR_delete_automated_backups=true
+  export TF_VAR_ecr_force_delete=true
+}
+
+disable_rds_deletion_protection_for_destroy() {
+  if [[ "${TERRAFORM_ACTION}" != "destroy" ]]; then
+    return
+  fi
+
+  if ! is_truthy_value "${TF_VAR_create_rds:-true}"; then
+    return
+  fi
+
+  require_cmd aws
+
+  local db_identifier deletion_protection
+  db_identifier="${TF_VAR_db_identifier:-oficina-postgres-lab}"
+
+  if ! deletion_protection="$(
+    aws --region "${AWS_REGION}" rds describe-db-instances \
+      --db-instance-identifier "${db_identifier}" \
+      --query 'DBInstances[0].DeletionProtection' \
+      --output text 2>/dev/null
+  )"; then
+    log "Instancia RDS ${db_identifier} nao encontrada; seguindo com terraform destroy"
+    return
+  fi
+
+  if [[ "${deletion_protection}" != "True" && "${deletion_protection}" != "true" ]]; then
+    log "Protecao de exclusao do RDS ${db_identifier} ja esta desabilitada"
+    return
+  fi
+
+  log "Desabilitando protecao de exclusao do RDS ${db_identifier} antes do destroy"
+  aws --region "${AWS_REGION}" rds modify-db-instance \
+    --db-instance-identifier "${db_identifier}" \
+    --no-deletion-protection \
+    --apply-immediately >/dev/null
+
+  aws --region "${AWS_REGION}" rds wait db-instance-available \
+    --db-instance-identifier "${db_identifier}"
+}
+
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   usage
   exit 0
@@ -295,6 +349,8 @@ case "${BOOTSTRAP_TF_STATE_BUCKET}" in
     ;;
 esac
 
+prepare_destroy_defaults
+
 terraform fmt -check -recursive "${REPO_ROOT}/terraform"
 
 if [[ "${TERRAFORM_ACTION}" != "validate" ]]; then
@@ -316,6 +372,7 @@ case "${TERRAFORM_ACTION}" in
     terraform -chdir="${TERRAFORM_DIR}" apply -auto-approve -input=false
     ;;
   destroy)
+    disable_rds_deletion_protection_for_destroy
     terraform -chdir="${TERRAFORM_DIR}" destroy -auto-approve -input=false
     ;;
 esac

@@ -32,6 +32,13 @@ jobs:
       - name: Setup kubectl
         uses: azure/setup-kubectl@v5
 
+      - name: Setup yq
+        shell: bash
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.47.1/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
       - name: Validate repository
         shell: bash
         run: bash ./scripts/actions/validate.sh
@@ -61,6 +68,7 @@ jobs:
       TF_VAR_subnet_ids: ${{ vars.SUBNET_IDS || '[]' }}
       TF_VAR_allowed_security_group_ids: ${{ vars.RDS_ALLOWED_SECURITY_GROUP_IDS || '[]' }}
       TF_VAR_allowed_cidr_blocks: ${{ vars.RDS_ALLOWED_CIDR_BLOCKS || '[]' }}
+      TF_VAR_deletion_protection: ${{ vars.RDS_DELETION_PROTECTION || 'false' }}
       TF_VAR_skip_final_snapshot: ${{ vars.SKIP_FINAL_SNAPSHOT || 'true' }}
       TF_VAR_delete_automated_backups: ${{ vars.DELETE_AUTOMATED_BACKUPS || 'true' }}
       TF_VAR_final_snapshot_identifier: ${{ vars.FINAL_SNAPSHOT_IDENTIFIER }}

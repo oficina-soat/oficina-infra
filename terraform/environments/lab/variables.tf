@@ -404,8 +404,8 @@ variable "instance_class" {
 
 variable "deletion_protection" {
   type        = bool
-  description = "Protecao contra destruicao acidental."
-  default     = true
+  description = "Protecao contra destruicao acidental. No lab, o default permanece false para permitir destroy completo do ambiente."
+  default     = false
 }
 
 variable "skip_final_snapshot" {
