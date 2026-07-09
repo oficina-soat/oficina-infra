@@ -11,6 +11,8 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 K8S_NAMESPACE="${K8S_NAMESPACE:-default}"
 DB_SSLMODE="${DB_SSLMODE:-require}"
+MICROSERVICE_NAMES="${MICROSERVICE_NAMES:-oficina-os-service oficina-billing-service oficina-execution-service}"
+API_GATEWAY_NAME="${API_GATEWAY_NAME:-eks-lab-http-api}"
 OFICINA_AUTH_ISSUER="${OFICINA_AUTH_ISSUER:-}"
 OFICINA_AUTH_JWKS_URI="${OFICINA_AUTH_JWKS_URI:-}"
 JWT_SECRET_NAME="${JWT_SECRET_NAME:-oficina/lab/jwt}"
@@ -20,6 +22,7 @@ WAIT_MICROSERVICE_ROLLOUT="${WAIT_MICROSERVICE_ROLLOUT:-false}"
 MICROSERVICE_ROLLOUT_TIMEOUT="${MICROSERVICE_ROLLOUT_TIMEOUT:-300s}"
 
 declare -a READY_SERVICES=()
+declare -a SELECTED_SERVICES=()
 declare -A SERVICE_IMAGES=()
 MICROSERVICE_TMP_DIR=""
 
@@ -32,6 +35,8 @@ Variaveis suportadas:
   AWS_REGION                    Regiao AWS. Default: us-east-1
   K8S_NAMESPACE                 Namespace Kubernetes. Default: default
   DB_SSLMODE                    SSL mode para URLs PostgreSQL. Default: require
+  MICROSERVICE_NAMES            Servicos a aplicar, separados por espaco ou virgula. Default: todos
+  API_GATEWAY_NAME              Nome do HTTP API para descobrir issuer quando Terraform output nao estiver disponivel. Default: eks-lab-http-api
   OFICINA_AUTH_ISSUER           Issuer JWT. Se ausente, usa terraform output api_gateway_endpoint
   OFICINA_AUTH_JWKS_URI         JWKS URI. Se ausente, deriva de OFICINA_AUTH_ISSUER
   JWT_SECRET_NAME               Secret AWS com chave publica JWT. Default: oficina/lab/jwt
@@ -48,8 +53,31 @@ EOF
 read_tf_output() {
   local name="$1"
 
-  require_cmd terraform
+  if ! command -v terraform >/dev/null 2>&1; then
+    printf ''
+    return
+  fi
+
   terraform -chdir="${TERRAFORM_DIR}" output -raw "${name}" 2>/dev/null || true
+}
+
+read_api_gateway_endpoint() {
+  local endpoint
+
+  require_cmd aws
+  endpoint="$(
+    aws apigatewayv2 get-apis \
+      --region "${AWS_REGION}" \
+      --query "Items[?Name=='${API_GATEWAY_NAME}'].ApiEndpoint | [0]" \
+      --output text 2>/dev/null || true
+  )"
+
+  if [[ -z "${endpoint}" || "${endpoint}" == "None" ]]; then
+    printf ''
+    return
+  fi
+
+  printf '%s' "${endpoint}"
 }
 
 read_secret_json() {
@@ -199,6 +227,45 @@ latest_ecr_image() {
   printf '%s:%s' "${repository_uri}" "${tag}"
 }
 
+service_image_env_name() {
+  local service="$1"
+
+  case "${service}" in
+    oficina-os-service)
+      printf 'OFICINA_OS_SERVICE_IMAGE'
+      ;;
+    oficina-billing-service)
+      printf 'OFICINA_BILLING_SERVICE_IMAGE'
+      ;;
+    oficina-execution-service)
+      printf 'OFICINA_EXECUTION_SERVICE_IMAGE'
+      ;;
+    *)
+      fail "microsservico nao canonico: ${service}"
+      ;;
+  esac
+}
+
+resolve_selected_services() {
+  local normalized service
+
+  normalized="${MICROSERVICE_NAMES//,/ }"
+  for service in ${normalized}; do
+    case "${service}" in
+      oficina-os-service | oficina-billing-service | oficina-execution-service)
+        SELECTED_SERVICES+=("${service}")
+        ;;
+      *)
+        fail "MICROSERVICE_NAMES contem microsservico nao canonico: ${service}"
+        ;;
+    esac
+  done
+
+  if [[ ${#SELECTED_SERVICES[@]} -eq 0 ]]; then
+    fail "MICROSERVICE_NAMES deve conter ao menos um microsservico"
+  fi
+}
+
 resolve_service_image() {
   local service="$1"
   local env_name="$2"
@@ -296,9 +363,11 @@ fi
 require_cmd kubectl
 require_cmd sed
 
-resolve_service_image "oficina-os-service" "OFICINA_OS_SERVICE_IMAGE"
-resolve_service_image "oficina-billing-service" "OFICINA_BILLING_SERVICE_IMAGE"
-resolve_service_image "oficina-execution-service" "OFICINA_EXECUTION_SERVICE_IMAGE"
+resolve_selected_services
+
+for service in "${SELECTED_SERVICES[@]}"; do
+  resolve_service_image "${service}" "$(service_image_env_name "${service}")"
+done
 
 if [[ ${#READY_SERVICES[@]} -eq 0 ]]; then
   apply_ready_manifests
@@ -309,6 +378,9 @@ ensure_namespace
 
 if [[ -z "${OFICINA_AUTH_ISSUER}" ]]; then
   OFICINA_AUTH_ISSUER="$(read_tf_output api_gateway_endpoint)"
+fi
+if [[ -z "${OFICINA_AUTH_ISSUER}" ]]; then
+  OFICINA_AUTH_ISSUER="$(read_api_gateway_endpoint)"
 fi
 OFICINA_AUTH_ISSUER="$(normalize_url "${OFICINA_AUTH_ISSUER}")"
 require_non_empty "${OFICINA_AUTH_ISSUER}" "OFICINA_AUTH_ISSUER"
