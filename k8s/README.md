@@ -25,10 +25,11 @@ k8s/base/microservices/
   oficina-execution-service/
 ```
 
-O overlay `lab` deve referenciar esses manifests quando os secrets, imagens ECR e recursos AWS dependentes estiverem prontos.
+Esses manifests já estão materializados em [base/microservices/](base/microservices/). O overlay [overlays/lab/](overlays/lab/) continua restrito aos componentes compartilhados que não dependem de imagem dos microsserviços. Os Deployments dos microsserviços são aplicados por [scripts/manual/apply-microservices.sh](../scripts/manual/apply-microservices.sh), que prepara secrets Kubernetes, substitui issuer/JWKS e usa imagens publicadas no ECR. Não aplique [base/microservices/](base/microservices/) diretamente no cluster, porque a base mantém placeholders de imagem e autenticação.
 
 Renderização:
 
 ```bash
 kubectl kustomize k8s/overlays/lab
+kubectl kustomize k8s/base/microservices
 ```

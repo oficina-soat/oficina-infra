@@ -12,6 +12,7 @@ EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME:-eks-lab}"
 APPLY_K8S="${APPLY_K8S:-true}"
 BOOTSTRAP_SERVICE_DATABASES="${BOOTSTRAP_SERVICE_DATABASES:-true}"
 BOOTSTRAP_SERVICE_DATABASES_MODE="${BOOTSTRAP_SERVICE_DATABASES_MODE:-k8s}"
+APPLY_MICROSERVICES="${APPLY_MICROSERVICES:-true}"
 INSTALL_NEW_RELIC_OTEL_COLLECTOR="${INSTALL_NEW_RELIC_OTEL_COLLECTOR:-false}"
 
 require_cmd aws
@@ -23,7 +24,9 @@ aws sts get-caller-identity >/dev/null
 log "Aplicando Terraform do ambiente lab"
 TERRAFORM_ACTION=apply "${SCRIPT_DIR}/ci-terraform.sh"
 
-if [[ "${BOOTSTRAP_SERVICE_DATABASES}" == "true" && "${BOOTSTRAP_SERVICE_DATABASES_MODE}" == "k8s" ]] || [[ "${APPLY_K8S}" == "true" ]]; then
+if [[ "${BOOTSTRAP_SERVICE_DATABASES}" == "true" && "${BOOTSTRAP_SERVICE_DATABASES_MODE}" == "k8s" ]] \
+  || [[ "${APPLY_K8S}" == "true" ]] \
+  || [[ "${APPLY_MICROSERVICES}" == "true" ]]; then
   require_cmd kubectl
   log "Atualizando kubeconfig do cluster ${EKS_CLUSTER_NAME}"
   aws eks update-kubeconfig --region "${AWS_REGION}" --name "${EKS_CLUSTER_NAME}"
@@ -48,6 +51,11 @@ fi
 if [[ "${APPLY_K8S}" == "true" ]]; then
   log "Aplicando overlay Kubernetes compartilhado"
   kubectl apply -k "${REPO_ROOT}/k8s/overlays/lab"
+fi
+
+if [[ "${APPLY_MICROSERVICES}" == "true" ]]; then
+  log "Aplicando manifests Kubernetes dos microsservicos quando houver imagens ECR"
+  "${REPO_ROOT}/scripts/manual/apply-microservices.sh"
 fi
 
 if [[ "${INSTALL_NEW_RELIC_OTEL_COLLECTOR}" == "true" ]]; then
