@@ -66,9 +66,11 @@ Use `BOOTSTRAP_SERVICE_DATABASES_MODE=local` somente em execução manual a part
 
 O bucket S3 do backend remoto é criado automaticamente por [scripts/actions/ci-terraform.sh](../scripts/actions/ci-terraform.sh) quando `BOOTSTRAP_TF_STATE_BUCKET=true`, que é o padrão do CI. Use `BOOTSTRAP_TF_STATE_BUCKET=false` apenas quando o bucket já for provisionado por outro fluxo e a execução deve falhar caso ele não exista.
 
-No workflow de lab, `CREATE_EKS=true` é o padrão para que o security group do cluster seja autorizado automaticamente no RDS. O script [scripts/actions/ci-terraform.sh](../scripts/actions/ci-terraform.sh) também usa `SKIP_FINAL_SNAPSHOT=true` por padrão, evitando a exigência de `FINAL_SNAPSHOT_IDENTIFIER` nas execuções automatizadas do ambiente `lab`.
+No workflow de lab, `CREATE_EKS=true` é o padrão para que o security group do cluster seja autorizado automaticamente no RDS. O script [scripts/actions/ci-terraform.sh](../scripts/actions/ci-terraform.sh) também usa `RDS_DELETION_PROTECTION=false` e `SKIP_FINAL_SNAPSHOT=true` por padrão, evitando bloqueio de exclusão e exigência de `FINAL_SNAPSHOT_IDENTIFIER` nas execuções automatizadas do ambiente `lab`.
 
 Para o destroy do lab, `DELETE_AUTOMATED_BACKUPS=true` também é o padrão. Esse valor remove os backups automáticos retidos pela AWS quando a instância RDS é destruída. Ele não remove snapshots manuais já existentes; snapshots manuais são artefatos independentes e precisam de limpeza operacional explícita quando não forem mais necessários.
+
+Quando `TERRAFORM_ACTION=destroy`, [scripts/actions/ci-terraform.sh](../scripts/actions/ci-terraform.sh) força `deletion_protection=false`, `skip_final_snapshot=true` e `delete_automated_backups=true`. Antes do `terraform destroy`, o script consulta a instância `oficina-postgres-lab` e desabilita a proteção de exclusão via AWS CLI quando uma instância antiga ainda estiver protegida.
 
 ## Adoção do RDS existente
 

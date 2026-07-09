@@ -39,9 +39,10 @@ jobs:
       TF_VAR_eks_cluster_role_arn: ${{ vars.EKS_CLUSTER_ROLE_ARN }}
       TF_VAR_eks_node_role_arn: ${{ vars.EKS_NODE_ROLE_ARN }}
       TF_VAR_eks_access_principal_arn: ${{ vars.EKS_ACCESS_PRINCIPAL_ARN }}
-      TF_VAR_skip_final_snapshot: ${{ vars.SKIP_FINAL_SNAPSHOT || 'true' }}
-      TF_VAR_delete_automated_backups: ${{ vars.DELETE_AUTOMATED_BACKUPS || 'true' }}
-      TF_VAR_final_snapshot_identifier: ${{ vars.FINAL_SNAPSHOT_IDENTIFIER }}
+      TF_VAR_deletion_protection: "false"
+      TF_VAR_skip_final_snapshot: "true"
+      TF_VAR_delete_automated_backups: "true"
+      TF_VAR_final_snapshot_identifier: ""
       TF_VAR_ecr_force_delete: "true"
     steps:
       - name: Checkout

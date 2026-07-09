@@ -103,8 +103,10 @@ Variáveis mínimas esperadas:
 - `EKS_CLUSTER_NAME=eks-lab`
 - `CREATE_EKS=true`, padrão do workflow para manter o lab alinhado ao deploy Kubernetes
 - `EKS_CLUSTER_ROLE_ARN` e `EKS_NODE_ROLE_ARN`, quando `CREATE_EKS=true`; no VocLabs, [scripts/actions/ci-terraform.sh](scripts/actions/ci-terraform.sh) tenta descobrir automaticamente roles com `LabEksClusterRole` e `LabEksNodeRole` no nome quando essas variáveis não forem informadas
+- `RDS_DELETION_PROTECTION=false`, padrão do workflow para permitir destroy completo do RDS de lab
 - `SKIP_FINAL_SNAPSHOT=true`, padrão do workflow para destruir o RDS de lab sem exigir `FINAL_SNAPSHOT_IDENTIFIER`
 - `DELETE_AUTOMATED_BACKUPS=true`, padrão do workflow para remover backups automáticos do RDS no destroy do lab
+- `TF_VAR_ecr_force_delete=true`, aplicado automaticamente no destroy para remover repositórios ECR mesmo quando ainda contêm imagens
 - `VPC_ID` e `SUBNET_IDS`, quando a rede não for criada pelo Terraform
 - `BOOTSTRAP_SERVICE_DATABASES_MODE=k8s`, padrão do workflow para executar o bootstrap PostgreSQL por Job efêmero dentro do EKS; use `local` apenas quando o runner tiver rota direta para o RDS
 - `DB_BOOTSTRAP_NAMESPACE`, `DB_BOOTSTRAP_IMAGE` e `DB_BOOTSTRAP_TIMEOUT`, opcionais para customizar o Job efêmero de bootstrap dos databases
@@ -119,3 +121,5 @@ TF_STATE_BUCKET=<bucket-state> scripts/actions/ci-deploy.sh
 ```
 
 Quando as credenciais AWS locais apontam para a conta correta e o bucket usa o nome canônico, o comando também pode ser executado sem `TF_STATE_BUCKET`.
+
+O workflow [Destroy Lab](.github/workflows/destroy-lab.yml) força `deletion_protection=false`, `skip_final_snapshot=true`, `delete_automated_backups=true` e `ecr_force_delete=true`. Antes de executar `terraform destroy`, [scripts/actions/ci-terraform.sh](scripts/actions/ci-terraform.sh) também remove a proteção de exclusão da instância `oficina-postgres-lab` quando ela já existe protegida na AWS.
