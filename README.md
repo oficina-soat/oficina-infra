@@ -85,6 +85,7 @@ Arquivos principais:
 terraform fmt -check -recursive terraform
 terraform -chdir=terraform/environments/lab init -backend=false
 terraform -chdir=terraform/environments/lab validate
+find . -path ./.git -prune -o \( -name '*.yaml' -o -name '*.yml' \) -print0 | xargs -0 yq e '.' >/dev/null
 find scripts -type f -name '*.sh' -print0 | xargs -0 bash -n
 ```
 

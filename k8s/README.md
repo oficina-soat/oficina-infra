@@ -2,7 +2,6 @@
 
 Estrutura Kubernetes do ambiente `lab`.
 
-- [components/aws-observability/](components/aws-observability/) mantém manifests AWS-native legados como referência de migração; o overlay `lab` não aplica esse componente porque a observabilidade canônica usa New Relic.
 - [components/new-relic-otel-collector/values.lab.yaml](components/new-relic-otel-collector/values.lab.yaml) define os valores Helm do New Relic OpenTelemetry Collector do ambiente `lab`.
 - [components/mailhog/](components/mailhog/) mantém o MailHog usado pelos fluxos de notificação em laboratório.
 - [overlays/lab/](overlays/lab/) renderiza os componentes compartilhados do cluster que não dependem de instalação Helm.
