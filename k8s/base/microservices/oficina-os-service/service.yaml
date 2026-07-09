@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: oficina-os-service
+  labels:
+    app.kubernetes.io/name: oficina-os-service
+    app.kubernetes.io/part-of: oficina
+    app.kubernetes.io/component: service
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: oficina-os-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

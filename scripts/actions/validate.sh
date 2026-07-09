@@ -30,5 +30,6 @@ validate_yaml_files() {
 terraform fmt -check -recursive "${REPO_ROOT}/terraform"
 TERRAFORM_ACTION=validate "${SCRIPT_DIR}/ci-terraform.sh"
 validate_yaml_files
+kubectl kustomize "${REPO_ROOT}/k8s/base/microservices" >/tmp/oficina-infra-microservices-rendered.yaml
 kubectl kustomize "${REPO_ROOT}/k8s/overlays/lab" >/tmp/oficina-infra-lab-rendered.yaml
 find "${REPO_ROOT}/scripts" -type f -name '*.sh' -print0 | xargs -0 bash -n

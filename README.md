@@ -53,7 +53,9 @@ Documentação: [Ambiente local integrado](docs/local-integration.md).
 
 Este repositório é a fonte canônica dos manifests Kubernetes executáveis dos microsserviços da Fase 4. A estratégia de entrega está definida em [Estratégia de entrega dos manifestos Kubernetes](../oficina-platform/docs/kubernetes-manifest-strategy.md).
 
-Os manifests devem ser materializados em `k8s/base/microservices/<nome-do-servico>/` e referenciados pelo overlay `k8s/overlays/lab/` quando os recursos dependentes do ambiente estiverem prontos.
+Os manifests estão materializados em `k8s/base/microservices/<nome-do-servico>/`. O deploy do ambiente `lab` aplica esses manifests por [scripts/manual/apply-microservices.sh](scripts/manual/apply-microservices.sh), depois do bootstrap dos databases e do overlay compartilhado.
+
+O script cria ou atualiza os secrets Kubernetes de runtime, resolve `OFICINA_AUTH_ISSUER` e `MP_JWT_VERIFY_PUBLICKEY_LOCATION`, sincroniza a chave pública JWT quando o secret `oficina/lab/jwt` está disponível, descobre a imagem mais recente de cada repositório ECR canônico e aplica apenas os serviços que já têm imagem publicada. Quando ainda não há imagem de um serviço no ECR, o Deployment desse serviço é ignorado nessa execução para evitar pods com `IMAGE_PLACEHOLDER`.
 
 ## Observabilidade New Relic
 
@@ -111,6 +113,10 @@ Variáveis mínimas esperadas:
 - `VPC_ID` e `SUBNET_IDS`, quando a rede não for criada pelo Terraform
 - `BOOTSTRAP_SERVICE_DATABASES_MODE=k8s`, padrão do workflow para executar o bootstrap PostgreSQL por Job efêmero dentro do EKS; use `local` apenas quando o runner tiver rota direta para o RDS
 - `DB_BOOTSTRAP_NAMESPACE`, `DB_BOOTSTRAP_IMAGE` e `DB_BOOTSTRAP_TIMEOUT`, opcionais para customizar o Job efêmero de bootstrap dos databases
+- `APPLY_MICROSERVICES=true`, padrão do workflow para materializar os Deployments dos microsserviços quando houver imagens ECR disponíveis
+- `OFICINA_OS_SERVICE_IMAGE`, `OFICINA_BILLING_SERVICE_IMAGE` e `OFICINA_EXECUTION_SERVICE_IMAGE`, opcionais para fixar imagens específicas em vez de usar a imagem mais recente do ECR
+- `OFICINA_AUTH_ISSUER`, `OFICINA_AUTH_JWKS_URI`, `JWT_SECRET_NAME` e `K8S_JWT_SECRET_NAME`, opcionais para customizar a integração JWT dos microsserviços
+- `WAIT_MICROSERVICE_ROLLOUT=true`, opcional para aguardar `rollout status` dos Deployments aplicados
 - `CREATE_EXECUTION_DYNAMODB=false`, quando as tabelas DynamoDB não devem ser criadas pelo workflow
 - `CREATE_DOMAIN_MESSAGING=false`, quando SNS/SQS da Fase 4 não devem ser criados pelo workflow
 - `INSTALL_NEW_RELIC_OTEL_COLLECTOR=true`, `NEW_RELIC_LICENSE_KEY` e `NEW_RELIC_OTLP_ENDPOINT`, quando o New Relic OpenTelemetry Collector deve ser instalado no cluster
