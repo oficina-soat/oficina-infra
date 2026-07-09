@@ -85,12 +85,17 @@ Arquivos principais:
 
 ## Validação local
 
+Instale as ferramentas recomendadas conforme [Ferramentas de validação local](../oficina-platform/docs/validation-tooling.md).
+
 ```bash
 terraform fmt -check -recursive terraform
 terraform -chdir=terraform/environments/lab init -backend=false
 terraform -chdir=terraform/environments/lab validate
 find . -path ./.git -prune -o \( -name '*.yaml' -o -name '*.yml' \) -print0 | xargs -0 yq e '.' >/dev/null
 find scripts -type f -name '*.sh' -print0 | xargs -0 bash -n
+actionlint
+find scripts -type f -name '*.sh' -print0 | xargs -0 shellcheck
+shfmt -d scripts
 ```
 
 ## Deploy
