@@ -47,6 +47,8 @@ Variaveis suportadas:
   TF_VAR_ecr_force_delete   true|false para destruir repositorios ECR com imagens. Default do script: false; em destroy: true
   DESTROY_ECR_IMAGES        true|false para remover imagens ECR antes do destroy. Default: true
   DESTROY_EXTERNAL_LAMBDAS  true|false para remover Lambdas externas que prendem ENIs da VPC. Default: true
+  DESTROY_LAMBDA_ENI_WAIT_SECONDS segundos para aguardar liberacao de ENIs Lambda. Default/minimo: 3600
+  DESTROY_LAMBDA_ENI_POLL_SECONDS intervalo entre consultas de ENIs Lambda. Default: 30
 EOF
 }
 
@@ -462,12 +464,32 @@ list_security_group_network_interfaces() {
     --output text 2>/dev/null || true
 }
 
+require_positive_integer() {
+  local value="$1"
+  local name="$2"
+
+  if ! [[ "${value}" =~ ^[0-9]+$ ]] || ((value == 0)); then
+    fail "${name} deve ser um inteiro positivo"
+  fi
+}
+
 wait_for_security_group_network_interfaces() {
   local security_group_id="$1"
-  local wait_seconds="${DESTROY_LAMBDA_ENI_WAIT_SECONDS:-2700}"
-  local poll_seconds="${DESTROY_LAMBDA_ENI_POLL_SECONDS:-15}"
-  local deadline=$((SECONDS + wait_seconds))
+  local wait_seconds="${DESTROY_LAMBDA_ENI_WAIT_SECONDS:-3600}"
+  local poll_seconds="${DESTROY_LAMBDA_ENI_POLL_SECONDS:-30}"
+  local min_wait_seconds=3600
+  local deadline
   local interface_ids
+
+  require_positive_integer "${wait_seconds}" "DESTROY_LAMBDA_ENI_WAIT_SECONDS"
+  require_positive_integer "${poll_seconds}" "DESTROY_LAMBDA_ENI_POLL_SECONDS"
+
+  if ((wait_seconds < min_wait_seconds)); then
+    log "DESTROY_LAMBDA_ENI_WAIT_SECONDS=${wait_seconds} e menor que o minimo operacional ${min_wait_seconds}; usando ${min_wait_seconds}"
+    wait_seconds="${min_wait_seconds}"
+  fi
+
+  deadline=$((SECONDS + wait_seconds))
 
   while true; do
     interface_ids="$(list_security_group_network_interfaces "${security_group_id}")"
@@ -483,6 +505,66 @@ wait_for_security_group_network_interfaces() {
     log "Aguardando liberacao de ENIs do security group ${security_group_id}: ${interface_ids}"
     sleep "${poll_seconds}"
   done
+}
+
+lambda_config_has_vpc() {
+  local config_json="$1"
+
+  jq -e '
+    ((.VpcConfig.SecurityGroupIds // []) | length > 0)
+    or ((.VpcConfig.SubnetIds // []) | length > 0)
+  ' <<<"${config_json}" >/dev/null
+}
+
+wait_lambda_function_updated_for_destroy() {
+  local function_name="$1"
+  local output status
+
+  set +e
+  output="$(
+    aws --region "${AWS_REGION}" lambda wait function-updated \
+      --function-name "${function_name}" 2>&1
+  )"
+  status=$?
+  set -e
+
+  if [[ ${status} -ne 0 ]] && ! grep -Eq "ResourceNotFoundException|Function not found" <<<"${output}"; then
+    echo "${output}" >&2
+    exit "${status}"
+  fi
+}
+
+detach_lambda_vpc_config_for_destroy() {
+  local function_name="$1"
+  local config_json="$2"
+  local output status
+
+  if ! lambda_config_has_vpc "${config_json}"; then
+    return
+  fi
+
+  log "Removendo configuracao de VPC da Lambda ${function_name} antes da exclusao"
+
+  set +e
+  output="$(
+    aws --region "${AWS_REGION}" lambda update-function-configuration \
+      --function-name "${function_name}" \
+      --vpc-config '{"SubnetIds":[],"SecurityGroupIds":[]}' 2>&1
+  )"
+  status=$?
+  set -e
+
+  if [[ ${status} -ne 0 ]]; then
+    if grep -Eq "ResourceNotFoundException|Function not found" <<<"${output}"; then
+      log "Lambda ${function_name} nao existe mais; seguindo"
+      return
+    fi
+
+    echo "${output}" >&2
+    exit "${status}"
+  fi
+
+  wait_lambda_function_updated_for_destroy "${function_name}"
 }
 
 revoke_ingress_rules_referencing_security_group() {
@@ -587,6 +669,8 @@ delete_external_lambda_for_destroy() {
       --output json 2>/dev/null
   )"; then
     security_group_ids="$(jq -r '.VpcConfig.SecurityGroupIds[]?' <<<"${config_json}")"
+
+    detach_lambda_vpc_config_for_destroy "${function_name}" "${config_json}"
 
     aws --region "${AWS_REGION}" lambda delete-function \
       --function-name "${function_name}" >/dev/null

@@ -119,7 +119,8 @@ Variáveis mínimas esperadas:
 - `TF_VAR_ecr_force_delete=true`, aplicado automaticamente no destroy para remover repositórios ECR mesmo quando ainda contêm imagens
 - `DESTROY_ECR_IMAGES=true`, padrão do workflow para remover imagens dos repositórios ECR canônicos antes do `terraform destroy`
 - `DESTROY_EXTERNAL_LAMBDAS=true`, padrão do workflow para remover as Lambdas externas conhecidas do lab antes do `terraform destroy`, liberando ENIs e security groups que prendem as subnets da VPC
-- `DESTROY_LAMBDA_ENI_WAIT_SECONDS=2700`, padrão do workflow para aguardar a liberação assíncrona das ENIs de Lambda antes de destruir subnets
+- `DESTROY_LAMBDA_ENI_WAIT_SECONDS=3600`, padrão do workflow e mínimo operacional aplicado pelo script para aguardar a liberação assíncrona das ENIs de Lambda antes de destruir subnets
+- `DESTROY_LAMBDA_ENI_POLL_SECONDS=30`, padrão do workflow para consultar periodicamente a liberação dessas ENIs
 - `VPC_ID` e `SUBNET_IDS`, quando a rede não for criada pelo Terraform
 - `BOOTSTRAP_SERVICE_DATABASES_MODE=k8s`, padrão do workflow para executar o bootstrap PostgreSQL por Job efêmero dentro do EKS; use `local` apenas quando o runner tiver rota direta para o RDS
 - `DB_BOOTSTRAP_NAMESPACE`, `DB_BOOTSTRAP_IMAGE` e `DB_BOOTSTRAP_TIMEOUT`, opcionais para customizar o Job efêmero de bootstrap dos databases
@@ -143,7 +144,7 @@ Quando as credenciais AWS locais apontam para a conta correta e o bucket usa o n
 O workflow [Destroy Lab](.github/workflows/destroy-lab.yml) força `deletion_protection=false`, `skip_final_snapshot=true`, `delete_automated_backups=true` e `ecr_force_delete=true`. Antes de executar `terraform destroy`, [scripts/actions/ci-terraform.sh](scripts/actions/ci-terraform.sh) também:
 
 - remove imagens dos repositórios ECR canônicos para evitar falha de `RepositoryNotEmptyException`;
-- remove as Lambdas externas conhecidas do lab (`oficina-auth-lambda-lab` e `oficina-notificacao-lambda-lab`, salvo override por variáveis), seus log groups e security groups, aguardando a liberação das ENIs;
+- remove a configuração de VPC das Lambdas externas conhecidas do lab (`oficina-auth-lambda-lab` e `oficina-notificacao-lambda-lab`, salvo override por variáveis), apaga as funções, seus log groups e security groups, aguardando a liberação das ENIs;
 - remove a proteção de exclusão da instância `oficina-postgres-lab` quando ela já existe protegida na AWS.
 
 Quando houver nomes customizados, use `DESTROY_ECR_REPOSITORY_NAMES` e `DESTROY_LAMBDA_FUNCTION_NAMES` no workflow [Destroy Lab](.github/workflows/destroy-lab.yml). Para preservar imagens ECR ou Lambdas externas em uma execução pontual, defina `DESTROY_ECR_IMAGES=false` ou `DESTROY_EXTERNAL_LAMBDAS=false`.
