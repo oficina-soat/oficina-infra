@@ -103,7 +103,7 @@ jobs:
       K8S_JWT_SECRET_NAME: ${{ vars.K8S_JWT_SECRET_NAME || 'oficina-jwt-keys' }}
       WAIT_MICROSERVICE_ROLLOUT: ${{ vars.WAIT_MICROSERVICE_ROLLOUT || 'false' }}
       MICROSERVICE_ROLLOUT_TIMEOUT: ${{ vars.MICROSERVICE_ROLLOUT_TIMEOUT || '300s' }}
-      INSTALL_NEW_RELIC_OTEL_COLLECTOR: ${{ vars.INSTALL_NEW_RELIC_OTEL_COLLECTOR || 'false' }}
+      INSTALL_NEW_RELIC_OTEL_COLLECTOR: ${{ vars.INSTALL_NEW_RELIC_OTEL_COLLECTOR || 'auto' }}
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
       NEW_RELIC_NAMESPACE: ${{ vars.NEW_RELIC_NAMESPACE || 'newrelic' }}
       NEW_RELIC_OTEL_COLLECTOR_HELM_RELEASE: ${{ vars.NEW_RELIC_OTEL_COLLECTOR_HELM_RELEASE || 'nr-k8s-otel-collector' }}
@@ -112,6 +112,7 @@ jobs:
       NEW_RELIC_LICENSE_KEY_SECRET_KEY: ${{ vars.NEW_RELIC_LICENSE_KEY_SECRET_KEY || 'licenseKey' }}
       NEW_RELIC_CLUSTER_NAME: ${{ vars.NEW_RELIC_CLUSTER_NAME || vars.EKS_CLUSTER_NAME || 'eks-lab' }}
       NEW_RELIC_OTLP_ENDPOINT: ${{ vars.NEW_RELIC_OTLP_ENDPOINT || 'https://otlp.nr-data.net' }}
+      UPSERT_NEW_RELIC_SECRET: ${{ vars.UPSERT_NEW_RELIC_SECRET || 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -125,8 +126,39 @@ jobs:
         uses: azure/setup-kubectl@v5
 
       - name: Setup Helm
-        if: env.INSTALL_NEW_RELIC_OTEL_COLLECTOR == 'true'
+        if: env.INSTALL_NEW_RELIC_OTEL_COLLECTOR != 'false'
         uses: azure/setup-helm@v4
+
+      - name: Validate New Relic configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install_mode="${INSTALL_NEW_RELIC_OTEL_COLLECTOR,,}"
+          upsert_secret="${UPSERT_NEW_RELIC_SECRET,,}"
+
+          case "${install_mode}" in
+            auto)
+              if [[ -n "${NEW_RELIC_LICENSE_KEY:-}" ]]; then
+                echo "New Relic collector will be installed because NEW_RELIC_LICENSE_KEY is configured."
+              else
+                echo "New Relic collector will be skipped because NEW_RELIC_LICENSE_KEY is not configured."
+              fi
+              ;;
+            true|1|yes|y)
+              if [[ "${upsert_secret}" == "true" && -z "${NEW_RELIC_LICENSE_KEY:-}" ]]; then
+                echo "NEW_RELIC_LICENSE_KEY must be configured when INSTALL_NEW_RELIC_OTEL_COLLECTOR=true." >&2
+                exit 1
+              fi
+              ;;
+            false|0|no|n)
+              echo "New Relic collector disabled by INSTALL_NEW_RELIC_OTEL_COLLECTOR=false."
+              ;;
+            *)
+              echo "INSTALL_NEW_RELIC_OTEL_COLLECTOR must be true, false or auto." >&2
+              exit 1
+              ;;
+          esac
 
       - name: Deploy lab infrastructure
         shell: bash
