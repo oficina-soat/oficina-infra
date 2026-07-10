@@ -58,6 +58,29 @@ resource "aws_eks_access_policy_association" "admin" {
   }
 }
 
+resource "aws_launch_template" "node_group" {
+  name_prefix            = "${var.cluster_name}-ng-"
+  update_default_version = true
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_put_response_hop_limit = 2
+    http_tokens                 = "required"
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name = "${var.cluster_name}-ng"
+    }
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-ng"
+  }
+}
+
 resource "aws_eks_node_group" "this" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.cluster_name}-ng"
@@ -66,6 +89,11 @@ resource "aws_eks_node_group" "this" {
   capacity_type   = var.node_capacity_type
   instance_types  = [var.instance_type]
   ami_type        = var.node_ami_type
+
+  launch_template {
+    id      = aws_launch_template.node_group.id
+    version = aws_launch_template.node_group.latest_version
+  }
 
   scaling_config {
     desired_size = var.desired_size

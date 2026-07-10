@@ -59,6 +59,19 @@ OTEL_EXPORTER_OTLP_PROTOCOL=grpc
 
 O Service interno `nr-k8s-otel-collector-gateway` expõe OTLP/gRPC em `4317` e OTLP/HTTP em `4318`.
 
+## Pré-requisito dos nodes EKS
+
+O DaemonSet do chart usa o processor `resourcedetection/cloudproviders` para identificar o cluster como `aws_eks`. Em nodes EC2, esse processor precisa acessar IMDS a partir do pod; por isso, os nodes do `eks-lab` devem manter `HttpPutResponseHopLimit=2` ou usar uma configuração equivalente de identidade suportada pelo chart.
+
+O módulo [terraform/modules/eks/main.tf](../terraform/modules/eks/main.tf) versiona esse requisito por launch template do managed node group. Para nodes já criados antes dessa configuração, aplique o ajuste pontual na instância EC2 antes de recriar o pod do DaemonSet:
+
+```bash
+aws ec2 modify-instance-metadata-options \
+  --region us-east-1 \
+  --instance-id <instance-id> \
+  --http-put-response-hop-limit 2
+```
+
 ## Coleta esperada
 
 - Logs: coletados dos pods pelo receiver `filelog`.
