@@ -8,7 +8,7 @@ O collector roda dentro do cluster, mas a conta New Relic e a license key contin
 
 - [../k8s/components/new-relic-otel-collector/values.lab.yaml](../k8s/components/new-relic-otel-collector/values.lab.yaml) define os valores Helm do ambiente `lab`.
 - [../scripts/manual/install-new-relic-otel-collector.sh](../scripts/manual/install-new-relic-otel-collector.sh) instala ou atualiza o release Helm `nr-k8s-otel-collector`.
-- [../scripts/actions/ci-deploy.sh](../scripts/actions/ci-deploy.sh) pode instalar o collector automaticamente quando `INSTALL_NEW_RELIC_OTEL_COLLECTOR=true`.
+- [../scripts/actions/ci-deploy.sh](../scripts/actions/ci-deploy.sh) instala o collector automaticamente no modo `INSTALL_NEW_RELIC_OTEL_COLLECTOR=auto` quando `NEW_RELIC_LICENSE_KEY` está disponível.
 
 ## Variáveis
 
@@ -22,7 +22,7 @@ O collector roda dentro do cluster, mas a conta New Relic e a license key contin
 | `NEW_RELIC_LICENSE_KEY_SECRET_KEY` | Não | `licenseKey` | Chave dentro do Secret Kubernetes. |
 | `NEW_RELIC_CLUSTER_NAME` | Não | valor de `EKS_CLUSTER_NAME` | Nome do cluster reportado ao New Relic. |
 | `NEW_RELIC_OTLP_ENDPOINT` | Não | `https://otlp.nr-data.net` | Endpoint OTLP externo do New Relic. Alterar quando a conta usar outra região. |
-| `INSTALL_NEW_RELIC_OTEL_COLLECTOR` | Não | `false` | Habilita a instalação no deploy automatizado. |
+| `INSTALL_NEW_RELIC_OTEL_COLLECTOR` | Não | `auto` | Controla a instalação no deploy automatizado. `auto` instala quando `NEW_RELIC_LICENSE_KEY` está presente, `true` força a instalação e `false` desabilita. |
 | `UPSERT_NEW_RELIC_SECRET` | Não | `true` | Cria ou atualiza o Secret Kubernetes a partir de `NEW_RELIC_LICENSE_KEY`. |
 | `SKIP_KUBECONFIG_UPDATE` | Não | `false` | Evita atualizar o kubeconfig quando o deploy já fez isso. |
 
@@ -44,10 +44,9 @@ UPSERT_NEW_RELIC_SECRET=false scripts/manual/install-new-relic-otel-collector.sh
 No repositório ou na organização GitHub, configure:
 
 - secret `NEW_RELIC_LICENSE_KEY`;
-- variável `INSTALL_NEW_RELIC_OTEL_COLLECTOR=true`;
 - variável `NEW_RELIC_OTLP_ENDPOINT`, se a conta não usar o endpoint padrão `https://otlp.nr-data.net`.
 
-O workflow de deploy executa o Terraform, aplica o overlay Kubernetes compartilhado e, quando habilitado, instala ou atualiza o collector via Helm.
+O workflow de deploy usa `INSTALL_NEW_RELIC_OTEL_COLLECTOR=auto` por padrão. Com a secret `NEW_RELIC_LICENSE_KEY` configurada, ele executa o Terraform, aplica o overlay Kubernetes compartilhado e instala ou atualiza o collector via Helm. Para desabilitar explicitamente a etapa, configure `INSTALL_NEW_RELIC_OTEL_COLLECTOR=false`; para exigir a instalação mesmo reutilizando um Secret Kubernetes existente, configure `INSTALL_NEW_RELIC_OTEL_COLLECTOR=true` e `UPSERT_NEW_RELIC_SECRET=false`.
 
 ## Endpoint OTLP interno
 

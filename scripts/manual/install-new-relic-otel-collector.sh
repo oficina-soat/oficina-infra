@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+# shellcheck source=scripts/lib/common.sh
 source "${SCRIPT_DIR}/../lib/common.sh"
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
@@ -43,7 +44,7 @@ fi
 log "Garantindo namespace ${NEW_RELIC_NAMESPACE}"
 kubectl create namespace "${NEW_RELIC_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
 
-if [[ "${UPSERT_NEW_RELIC_SECRET}" == "true" ]]; then
+if [[ "${UPSERT_NEW_RELIC_SECRET,,}" == "true" ]]; then
   require_non_empty "${NEW_RELIC_LICENSE_KEY:-}" "NEW_RELIC_LICENSE_KEY"
   log "Criando ou atualizando Secret ${NEW_RELIC_LICENSE_KEY_SECRET_NAME}"
   kubectl create secret generic "${NEW_RELIC_LICENSE_KEY_SECRET_NAME}" \

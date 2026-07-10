@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TERRAFORM_DIR="${TERRAFORM_DIR:-${REPO_ROOT}/terraform/environments/lab}"
 
+# shellcheck source=scripts/lib/common.sh
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/../lib/common.sh"
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
@@ -24,7 +26,9 @@ MICROSERVICE_ROLLOUT_TIMEOUT="${MICROSERVICE_ROLLOUT_TIMEOUT:-300s}"
 declare -a READY_SERVICES=()
 declare -a SELECTED_SERVICES=()
 declare -A SERVICE_IMAGES=()
+declare -A SERVICE_RUNTIME_SECRET_CHECKSUMS=()
 MICROSERVICE_TMP_DIR=""
+JWT_SECRET_CHECKSUM=""
 
 usage() {
   cat <<EOF
@@ -148,6 +152,27 @@ create_postgres_runtime_secret() {
     "--from-literal=REACTIVE_DATABASE_URL=postgresql://${host}:${port}/${database}?sslmode=${DB_SSLMODE}" \
     --dry-run=client \
     -o yaml | kubectl apply -f -
+}
+
+k8s_secret_data_checksum() {
+  local k8s_secret_name="$1"
+
+  require_cmd jq
+  require_cmd sha256sum
+
+  kubectl get secret "${k8s_secret_name}" \
+    --namespace "${K8S_NAMESPACE}" \
+    -o json \
+    | jq -S -c '.data // {}' \
+    | sha256sum \
+    | awk '{print $1}'
+}
+
+record_runtime_secret_checksum() {
+  local service="$1"
+  local k8s_secret_name="$2"
+
+  SERVICE_RUNTIME_SECRET_CHECKSUMS["${service}"]="$(k8s_secret_data_checksum "${k8s_secret_name}")"
 }
 
 create_jwt_public_key_secret() {
@@ -332,6 +357,8 @@ apply_ready_manifests() {
   log "Aplicando manifests dos microsservicos: ${READY_SERVICES[*]}"
   kubectl apply -k "${MICROSERVICE_TMP_DIR}"
 
+  patch_ready_deployment_checksums
+
   if [[ "${WAIT_MICROSERVICE_ROLLOUT}" == "true" ]]; then
     for service in "${READY_SERVICES[@]}"; do
       kubectl rollout status \
@@ -340,6 +367,55 @@ apply_ready_manifests() {
         --timeout="${MICROSERVICE_ROLLOUT_TIMEOUT}"
     done
   fi
+}
+
+patch_deployment_checksum_annotations() {
+  local service="$1"
+  local runtime_secret_checksum="${SERVICE_RUNTIME_SECRET_CHECKSUMS[${service}]:-}"
+  local patch
+
+  if [[ -z "${JWT_SECRET_CHECKSUM}" && -z "${runtime_secret_checksum}" ]]; then
+    return
+  fi
+
+  patch="$(
+    jq -cn \
+      --arg jwt_secret_checksum "${JWT_SECRET_CHECKSUM}" \
+      --arg runtime_secret_checksum "${runtime_secret_checksum}" \
+      '{
+        spec: {
+          template: {
+            metadata: {
+              annotations:
+                ((if $jwt_secret_checksum != "" then
+                    {"oficina.soat/jwt-secret-checksum": $jwt_secret_checksum}
+                  else
+                    {}
+                  end)
+                 + (if $runtime_secret_checksum != "" then
+                    {"oficina.soat/runtime-secret-checksum": $runtime_secret_checksum}
+                  else
+                    {}
+                  end))
+            }
+          }
+        }
+      }'
+  )"
+
+  log "Atualizando checksums de runtime no Deployment ${service}"
+  kubectl patch deployment "${service}" \
+    --namespace "${K8S_NAMESPACE}" \
+    --type=merge \
+    --patch "${patch}"
+}
+
+patch_ready_deployment_checksums() {
+  local service
+
+  for service in "${READY_SERVICES[@]}"; do
+    patch_deployment_checksum_annotations "${service}"
+  done
 }
 
 service_is_ready() {
@@ -393,13 +469,18 @@ require_non_empty "${OFICINA_AUTH_JWKS_URI}" "OFICINA_AUTH_JWKS_URI"
 
 log "Criando ou atualizando secrets Kubernetes de runtime dos microsservicos"
 create_jwt_public_key_secret
+if kubectl get secret "${K8S_JWT_SECRET_NAME}" --namespace "${K8S_NAMESPACE}" >/dev/null 2>&1; then
+  JWT_SECRET_CHECKSUM="$(k8s_secret_data_checksum "${K8S_JWT_SECRET_NAME}")"
+fi
 
 if service_is_ready "oficina-os-service"; then
   create_postgres_runtime_secret "oficina/lab/database/oficina-os-service" "oficina-os-service-database-env"
+  record_runtime_secret_checksum "oficina-os-service" "oficina-os-service-database-env"
 fi
 
 if service_is_ready "oficina-billing-service"; then
   create_postgres_runtime_secret "oficina/lab/database/oficina-billing-service" "oficina-billing-service-database-env"
+  record_runtime_secret_checksum "oficina-billing-service" "oficina-billing-service-database-env"
 fi
 
 apply_ready_manifests
