@@ -21,6 +21,7 @@ O collector roda dentro do cluster, mas a conta New Relic e a license key contin
 | `NEW_RELIC_LICENSE_KEY_SECRET_NAME` | Não | `new-relic-license-key` | Nome do Secret Kubernetes com a license key. |
 | `NEW_RELIC_LICENSE_KEY_SECRET_KEY` | Não | `licenseKey` | Chave dentro do Secret Kubernetes. |
 | `NEW_RELIC_CLUSTER_NAME` | Não | valor de `EKS_CLUSTER_NAME` | Nome do cluster reportado ao New Relic. |
+| `NEW_RELIC_REGION` | Não | `US` | Região da conta New Relic usada pelo chart. Valores aceitos pelo chart: `US`, `EU`, `JP`, `GOV`, `STG` ou `DEV`. |
 | `NEW_RELIC_OTLP_ENDPOINT` | Não | `https://otlp.nr-data.net` | Endpoint OTLP externo do New Relic. Alterar quando a conta usar outra região. |
 | `INSTALL_NEW_RELIC_OTEL_COLLECTOR` | Não | `auto` | Controla a instalação no deploy automatizado. `auto` instala quando `NEW_RELIC_LICENSE_KEY` está presente, `true` força a instalação e `false` desabilita. |
 | `UPSERT_NEW_RELIC_SECRET` | Não | `true` | Cria ou atualiza o Secret Kubernetes a partir de `NEW_RELIC_LICENSE_KEY`. |
@@ -44,6 +45,7 @@ UPSERT_NEW_RELIC_SECRET=false scripts/manual/install-new-relic-otel-collector.sh
 No repositório ou na organização GitHub, configure:
 
 - secret `NEW_RELIC_LICENSE_KEY`;
+- variável `NEW_RELIC_REGION`, se a conta não for da região padrão `US`;
 - variável `NEW_RELIC_OTLP_ENDPOINT`, se a conta não usar o endpoint padrão `https://otlp.nr-data.net`.
 
 O workflow de deploy usa `INSTALL_NEW_RELIC_OTEL_COLLECTOR=auto` por padrão. Com a secret `NEW_RELIC_LICENSE_KEY` configurada, ele executa o Terraform, aplica o overlay Kubernetes compartilhado e instala ou atualiza o collector via Helm. Para desabilitar explicitamente a etapa, configure `INSTALL_NEW_RELIC_OTEL_COLLECTOR=false`; para exigir a instalação mesmo reutilizando um Secret Kubernetes existente, configure `INSTALL_NEW_RELIC_OTEL_COLLECTOR=true` e `UPSERT_NEW_RELIC_SECRET=false`.

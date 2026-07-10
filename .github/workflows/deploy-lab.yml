@@ -111,6 +111,7 @@ jobs:
       NEW_RELIC_LICENSE_KEY_SECRET_NAME: ${{ vars.NEW_RELIC_LICENSE_KEY_SECRET_NAME || 'new-relic-license-key' }}
       NEW_RELIC_LICENSE_KEY_SECRET_KEY: ${{ vars.NEW_RELIC_LICENSE_KEY_SECRET_KEY || 'licenseKey' }}
       NEW_RELIC_CLUSTER_NAME: ${{ vars.NEW_RELIC_CLUSTER_NAME || vars.EKS_CLUSTER_NAME || 'eks-lab' }}
+      NEW_RELIC_REGION: ${{ vars.NEW_RELIC_REGION || 'US' }}
       NEW_RELIC_OTLP_ENDPOINT: ${{ vars.NEW_RELIC_OTLP_ENDPOINT || 'https://otlp.nr-data.net' }}
       UPSERT_NEW_RELIC_SECRET: ${{ vars.UPSERT_NEW_RELIC_SECRET || 'true' }}
     steps:
@@ -127,7 +128,7 @@ jobs:
 
       - name: Setup Helm
         if: env.INSTALL_NEW_RELIC_OTEL_COLLECTOR != 'false'
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
 
       - name: Validate New Relic configuration
         shell: bash
