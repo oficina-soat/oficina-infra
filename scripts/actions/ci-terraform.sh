@@ -464,7 +464,7 @@ list_security_group_network_interfaces() {
 
 wait_for_security_group_network_interfaces() {
   local security_group_id="$1"
-  local wait_seconds="${DESTROY_LAMBDA_ENI_WAIT_SECONDS:-600}"
+  local wait_seconds="${DESTROY_LAMBDA_ENI_WAIT_SECONDS:-2700}"
   local poll_seconds="${DESTROY_LAMBDA_ENI_POLL_SECONDS:-15}"
   local deadline=$((SECONDS + wait_seconds))
   local interface_ids

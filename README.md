@@ -119,6 +119,7 @@ Variáveis mínimas esperadas:
 - `TF_VAR_ecr_force_delete=true`, aplicado automaticamente no destroy para remover repositórios ECR mesmo quando ainda contêm imagens
 - `DESTROY_ECR_IMAGES=true`, padrão do workflow para remover imagens dos repositórios ECR canônicos antes do `terraform destroy`
 - `DESTROY_EXTERNAL_LAMBDAS=true`, padrão do workflow para remover as Lambdas externas conhecidas do lab antes do `terraform destroy`, liberando ENIs e security groups que prendem as subnets da VPC
+- `DESTROY_LAMBDA_ENI_WAIT_SECONDS=2700`, padrão do workflow para aguardar a liberação assíncrona das ENIs de Lambda antes de destruir subnets
 - `VPC_ID` e `SUBNET_IDS`, quando a rede não for criada pelo Terraform
 - `BOOTSTRAP_SERVICE_DATABASES_MODE=k8s`, padrão do workflow para executar o bootstrap PostgreSQL por Job efêmero dentro do EKS; use `local` apenas quando o runner tiver rota direta para o RDS
 - `DB_BOOTSTRAP_NAMESPACE`, `DB_BOOTSTRAP_IMAGE` e `DB_BOOTSTRAP_TIMEOUT`, opcionais para customizar o Job efêmero de bootstrap dos databases
