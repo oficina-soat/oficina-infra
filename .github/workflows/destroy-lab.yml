@@ -44,6 +44,16 @@ jobs:
       TF_VAR_delete_automated_backups: "true"
       TF_VAR_final_snapshot_identifier: ""
       TF_VAR_ecr_force_delete: "true"
+      DESTROY_ECR_IMAGES: ${{ vars.DESTROY_ECR_IMAGES || 'true' }}
+      DESTROY_ECR_REPOSITORY_NAMES: ${{ vars.DESTROY_ECR_REPOSITORY_NAMES }}
+      DESTROY_EXTERNAL_LAMBDAS: ${{ vars.DESTROY_EXTERNAL_LAMBDAS || 'true' }}
+      DESTROY_LAMBDA_FUNCTION_NAMES: ${{ vars.DESTROY_LAMBDA_FUNCTION_NAMES }}
+      DESTROY_LAMBDA_ENI_WAIT_SECONDS: ${{ vars.DESTROY_LAMBDA_ENI_WAIT_SECONDS || '600' }}
+      DESTROY_LAMBDA_ENI_POLL_SECONDS: ${{ vars.DESTROY_LAMBDA_ENI_POLL_SECONDS || '15' }}
+      AUTH_LAMBDA_FUNCTION_NAME: ${{ vars.AUTH_LAMBDA_FUNCTION_NAME || 'oficina-auth-lambda-lab' }}
+      AUTH_LAMBDA_SECURITY_GROUP_NAME: ${{ vars.AUTH_LAMBDA_SECURITY_GROUP_NAME }}
+      NOTIFICACAO_LAMBDA_FUNCTION_NAME: ${{ vars.NOTIFICACAO_LAMBDA_FUNCTION_NAME || 'oficina-notificacao-lambda-lab' }}
+      NOTIFICACAO_LAMBDA_SECURITY_GROUP_NAME: ${{ vars.NOTIFICACAO_LAMBDA_SECURITY_GROUP_NAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
