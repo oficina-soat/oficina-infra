@@ -60,6 +60,25 @@ output "api_gateway_endpoint" {
   description = "Endpoint publico do API Gateway HTTP."
 }
 
+output "api_gateway_http_route_keys" {
+  value       = try(module.api_gateway[0].http_route_keys, [])
+  description = "Route keys HTTP_PROXY publicadas no API Gateway."
+}
+
+output "microservice_private_nlb_dns_names" {
+  value = {
+    for name, nlb in module.microservice_private_nlb : name => nlb.load_balancer_dns_name
+  }
+  description = "DNS privados dos NLBs internos usados pelo API Gateway para os microsservicos."
+}
+
+output "microservice_private_nlb_listener_arns" {
+  value = {
+    for name, nlb in module.microservice_private_nlb : name => nlb.listener_arn
+  }
+  description = "Listener ARNs dos NLBs internos usados nas integracoes VPC_LINK dos microsservicos."
+}
+
 output "execution_dynamodb_table_names" {
   value       = try(module.execution_dynamodb[0].table_names, {})
   description = "Nomes das tabelas DynamoDB do oficina-execution-service."

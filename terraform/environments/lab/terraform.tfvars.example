@@ -38,6 +38,18 @@ ecr_repository_names = [
 create_api_gateway = true
 api_gateway_name   = "eks-lab-http-api"
 
+expose_microservices_api_gateway = true
+microservice_private_listener_ports = {
+  oficina-os-service        = 8081
+  oficina-billing-service   = 8082
+  oficina-execution-service = 8083
+}
+microservice_node_ports = {
+  oficina-os-service        = 30081
+  oficina-billing-service   = 30082
+  oficina-execution-service = 30083
+}
+
 create_execution_dynamodb             = true
 execution_dynamodb_table_prefix       = "oficina-execution-lab"
 create_domain_messaging               = true
