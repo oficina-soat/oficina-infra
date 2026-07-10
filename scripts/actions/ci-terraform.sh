@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+# shellcheck source=scripts/lib/common.sh
 source "${SCRIPT_DIR}/../lib/common.sh"
 
 TERRAFORM_DIR="${TERRAFORM_DIR:-${REPO_ROOT}/terraform/environments/lab}"
@@ -44,6 +45,8 @@ Variaveis suportadas:
   TF_VAR_skip_final_snapshot true|false para pular snapshot final do RDS no destroy. Default do script: true
   TF_VAR_delete_automated_backups true|false para remover backups automaticos do RDS no destroy. Default do script: true
   TF_VAR_ecr_force_delete   true|false para destruir repositorios ECR com imagens. Default do script: false; em destroy: true
+  DESTROY_ECR_IMAGES        true|false para remover imagens ECR antes do destroy. Default: true
+  DESTROY_EXTERNAL_LAMBDAS  true|false para remover Lambdas externas que prendem ENIs da VPC. Default: true
 EOF
 }
 
@@ -60,6 +63,51 @@ is_truthy_value() {
       return 1
       ;;
   esac
+}
+
+normalize_list_values() {
+  local value="$1"
+
+  if [[ -z "${value}" ]]; then
+    return
+  fi
+
+  if [[ "${value}" == \[* ]]; then
+    require_cmd jq
+    jq -r '.[]' <<<"${value}"
+    return
+  fi
+
+  tr ',;' '\n' <<<"${value}" | tr '[:space:]' '\n' | sed '/^$/d'
+}
+
+destroy_ecr_repository_names() {
+  if [[ -n "${DESTROY_ECR_REPOSITORY_NAMES:-}" ]]; then
+    normalize_list_values "${DESTROY_ECR_REPOSITORY_NAMES}"
+    return
+  fi
+
+  if [[ -n "${TF_VAR_ecr_repository_names:-}" ]]; then
+    normalize_list_values "${TF_VAR_ecr_repository_names}"
+    return
+  fi
+
+  printf '%s\n' \
+    oficina-os-service \
+    oficina-billing-service \
+    oficina-execution-service
+}
+
+destroy_lambda_function_names() {
+  if [[ -n "${DESTROY_LAMBDA_FUNCTION_NAMES:-}" ]]; then
+    normalize_list_values "${DESTROY_LAMBDA_FUNCTION_NAMES}"
+    return
+  fi
+
+  printf '%s\n' \
+    "${AUTH_LAMBDA_FUNCTION_NAME:-oficina-auth-lambda-lab}" \
+    "${NOTIFICACAO_LAMBDA_FUNCTION_NAME:-oficina-notificacao-lambda-lab}" |
+    sed '/^$/d'
 }
 
 resolve_role_arn_by_name_fragment() {
@@ -326,6 +374,265 @@ disable_rds_deletion_protection_for_destroy() {
     --db-instance-identifier "${db_identifier}"
 }
 
+delete_ecr_repository_images_for_destroy() {
+  if [[ "${TERRAFORM_ACTION}" != "destroy" ]]; then
+    return
+  fi
+
+  if ! is_truthy_value "${DESTROY_ECR_IMAGES:-true}"; then
+    log "Limpeza preventiva de imagens ECR desabilitada"
+    return
+  fi
+
+  require_cmd aws
+  require_cmd jq
+
+  local repository image_ids total offset chunk
+  while IFS= read -r repository; do
+    [[ -n "${repository}" ]] || continue
+
+    log "Removendo imagens ECR de ${repository} antes do destroy"
+
+    if ! image_ids="$(
+      aws --region "${AWS_REGION}" ecr list-images \
+        --repository-name "${repository}" \
+        --filter tagStatus=ANY \
+        --query 'imageIds' \
+        --output json 2>/dev/null
+    )"; then
+      log "Repositorio ECR ${repository} nao encontrado; seguindo"
+      continue
+    fi
+
+    total="$(jq 'length' <<<"${image_ids}")"
+    if ((total == 0)); then
+      log "Repositorio ECR ${repository} ja esta vazio"
+      continue
+    fi
+
+    offset=0
+    while ((offset < total)); do
+      chunk="$(jq -c --argjson offset "${offset}" '.[$offset:($offset + 100)]' <<<"${image_ids}")"
+      aws --region "${AWS_REGION}" ecr batch-delete-image \
+        --repository-name "${repository}" \
+        --image-ids "${chunk}" >/dev/null
+      offset=$((offset + 100))
+    done
+  done < <(destroy_ecr_repository_names)
+}
+
+lambda_security_group_name_for_function() {
+  local function_name="$1"
+
+  case "${function_name}" in
+    "${AUTH_LAMBDA_FUNCTION_NAME:-oficina-auth-lambda-lab}")
+      printf '%s\n' "${AUTH_LAMBDA_SECURITY_GROUP_NAME:-${function_name}-sg}"
+      ;;
+    "${NOTIFICACAO_LAMBDA_FUNCTION_NAME:-oficina-notificacao-lambda-lab}")
+      printf '%s\n' "${NOTIFICACAO_LAMBDA_SECURITY_GROUP_NAME:-${EKS_CLUSTER_NAME}-notificacao-lambda}"
+      ;;
+    *)
+      printf '%s\n' "${function_name}-sg"
+      ;;
+  esac
+}
+
+resolve_security_group_ids_by_name() {
+  local group_name="$1"
+  local vpc_id_filter=()
+
+  if [[ -n "${TF_VAR_vpc_id:-}" ]]; then
+    vpc_id_filter=("Name=vpc-id,Values=${TF_VAR_vpc_id}")
+  fi
+
+  aws --region "${AWS_REGION}" ec2 describe-security-groups \
+    --filters "${vpc_id_filter[@]}" "Name=group-name,Values=${group_name}" \
+    --query 'SecurityGroups[].GroupId' \
+    --output text 2>/dev/null |
+    tr '[:space:]' '\n' |
+    sed '/^$/d'
+}
+
+list_security_group_network_interfaces() {
+  local security_group_id="$1"
+
+  aws --region "${AWS_REGION}" ec2 describe-network-interfaces \
+    --filters "Name=group-id,Values=${security_group_id}" \
+    --query 'NetworkInterfaces[].NetworkInterfaceId' \
+    --output text 2>/dev/null || true
+}
+
+wait_for_security_group_network_interfaces() {
+  local security_group_id="$1"
+  local wait_seconds="${DESTROY_LAMBDA_ENI_WAIT_SECONDS:-600}"
+  local poll_seconds="${DESTROY_LAMBDA_ENI_POLL_SECONDS:-15}"
+  local deadline=$((SECONDS + wait_seconds))
+  local interface_ids
+
+  while true; do
+    interface_ids="$(list_security_group_network_interfaces "${security_group_id}")"
+
+    if [[ -z "${interface_ids}" || "${interface_ids}" == "None" ]]; then
+      return
+    fi
+
+    if ((SECONDS >= deadline)); then
+      fail "Security group ${security_group_id} ainda possui ENIs apos ${wait_seconds}s: ${interface_ids}"
+    fi
+
+    log "Aguardando liberacao de ENIs do security group ${security_group_id}: ${interface_ids}"
+    sleep "${poll_seconds}"
+  done
+}
+
+revoke_ingress_rules_referencing_security_group() {
+  local referenced_group_id="$1"
+  local target_group_ids target_group_id target_group_json permissions
+
+  require_cmd jq
+
+  target_group_ids="$(
+    aws --region "${AWS_REGION}" ec2 describe-security-groups \
+      --filters "Name=ip-permission.group-id,Values=${referenced_group_id}" \
+      --query 'SecurityGroups[].GroupId' \
+      --output text 2>/dev/null || true
+  )"
+
+  for target_group_id in ${target_group_ids}; do
+    target_group_json="$(
+      aws --region "${AWS_REGION}" ec2 describe-security-groups \
+        --group-ids "${target_group_id}" \
+        --output json
+    )"
+    permissions="$(
+      jq -c --arg group_id "${referenced_group_id}" '
+        [
+          .SecurityGroups[0].IpPermissions[] as $permission
+          | ($permission.UserIdGroupPairs // [] | map(select(.GroupId == $group_id))) as $pairs
+          | select($pairs | length > 0)
+          | {
+              IpProtocol: $permission.IpProtocol,
+              UserIdGroupPairs: $pairs
+            }
+          | if $permission.FromPort == null then .
+            else . + {FromPort: $permission.FromPort, ToPort: $permission.ToPort}
+            end
+        ]
+      ' <<<"${target_group_json}"
+    )"
+
+    if [[ "$(jq 'length' <<<"${permissions}")" -eq 0 ]]; then
+      continue
+    fi
+
+    log "Revogando regras de ingress que referenciam ${referenced_group_id} em ${target_group_id}"
+    aws --region "${AWS_REGION}" ec2 revoke-security-group-ingress \
+      --group-id "${target_group_id}" \
+      --ip-permissions "${permissions}" >/dev/null
+  done
+}
+
+delete_security_group_for_destroy() {
+  local security_group_id="$1"
+
+  [[ -n "${security_group_id}" ]] || return
+
+  wait_for_security_group_network_interfaces "${security_group_id}"
+  revoke_ingress_rules_referencing_security_group "${security_group_id}"
+
+  log "Removendo security group externo ${security_group_id}"
+  local output status
+  set +e
+  output="$(
+    aws --region "${AWS_REGION}" ec2 delete-security-group \
+      --group-id "${security_group_id}" 2>&1
+  )"
+  status=$?
+  set -e
+
+  if [[ ${status} -ne 0 ]] && ! grep -Eq "InvalidGroup.NotFound" <<<"${output}"; then
+    echo "${output}" >&2
+    exit "${status}"
+  fi
+}
+
+delete_lambda_log_group_for_destroy() {
+  local function_name="$1"
+  local log_group_name="/aws/lambda/${function_name}"
+
+  local output status
+  set +e
+  output="$(
+    aws --region "${AWS_REGION}" logs delete-log-group \
+      --log-group-name "${log_group_name}" 2>&1
+  )"
+  status=$?
+  set -e
+
+  if [[ ${status} -ne 0 ]] && ! grep -Eq "ResourceNotFoundException" <<<"${output}"; then
+    echo "${output}" >&2
+    exit "${status}"
+  fi
+}
+
+delete_external_lambda_for_destroy() {
+  local function_name="$1"
+  local config_json security_group_ids security_group_name security_group_id
+
+  log "Limpando Lambda externa ${function_name} antes do destroy"
+
+  if config_json="$(
+    aws --region "${AWS_REGION}" lambda get-function-configuration \
+      --function-name "${function_name}" \
+      --output json 2>/dev/null
+  )"; then
+    security_group_ids="$(jq -r '.VpcConfig.SecurityGroupIds[]?' <<<"${config_json}")"
+
+    aws --region "${AWS_REGION}" lambda delete-function \
+      --function-name "${function_name}" >/dev/null
+
+    while aws --region "${AWS_REGION}" lambda get-function \
+      --function-name "${function_name}" >/dev/null 2>&1; do
+      log "Aguardando remocao da Lambda ${function_name}"
+      sleep 5
+    done
+  else
+    log "Lambda ${function_name} nao existe; seguindo"
+    security_group_ids=""
+  fi
+
+  delete_lambda_log_group_for_destroy "${function_name}"
+
+  if [[ -z "${security_group_ids}" ]]; then
+    security_group_name="$(lambda_security_group_name_for_function "${function_name}")"
+    security_group_ids="$(resolve_security_group_ids_by_name "${security_group_name}")"
+  fi
+
+  for security_group_id in ${security_group_ids}; do
+    delete_security_group_for_destroy "${security_group_id}"
+  done
+}
+
+delete_external_lambdas_for_destroy() {
+  if [[ "${TERRAFORM_ACTION}" != "destroy" ]]; then
+    return
+  fi
+
+  if ! is_truthy_value "${DESTROY_EXTERNAL_LAMBDAS:-true}"; then
+    log "Limpeza preventiva de Lambdas externas desabilitada"
+    return
+  fi
+
+  require_cmd aws
+  require_cmd jq
+
+  local function_name
+  while IFS= read -r function_name; do
+    [[ -n "${function_name}" ]] || continue
+    delete_external_lambda_for_destroy "${function_name}"
+  done < <(destroy_lambda_function_names)
+}
+
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   usage
   exit 0
@@ -334,16 +641,14 @@ fi
 require_cmd terraform
 
 case "${TERRAFORM_ACTION}" in
-  init | validate | plan | apply | destroy)
-    ;;
+  init | validate | plan | apply | destroy) ;;
   *)
     fail "TERRAFORM_ACTION deve ser init, validate, plan, apply ou destroy"
     ;;
 esac
 
 case "${BOOTSTRAP_TF_STATE_BUCKET}" in
-  true | false)
-    ;;
+  true | false) ;;
   *)
     fail "BOOTSTRAP_TF_STATE_BUCKET deve ser true ou false"
     ;;
@@ -361,10 +666,8 @@ terraform_init
 terraform -chdir="${TERRAFORM_DIR}" validate
 
 case "${TERRAFORM_ACTION}" in
-  validate)
-    ;;
-  init)
-    ;;
+  validate) ;;
+  init) ;;
   plan)
     terraform -chdir="${TERRAFORM_DIR}" plan -input=false
     ;;
@@ -372,6 +675,8 @@ case "${TERRAFORM_ACTION}" in
     terraform -chdir="${TERRAFORM_DIR}" apply -auto-approve -input=false
     ;;
   destroy)
+    delete_ecr_repository_images_for_destroy
+    delete_external_lambdas_for_destroy
     disable_rds_deletion_protection_for_destroy
     terraform -chdir="${TERRAFORM_DIR}" destroy -auto-approve -input=false
     ;;
