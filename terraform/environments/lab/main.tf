@@ -36,6 +36,83 @@ locals {
     local.input_terraform_shared_data_bucket_name,
     "tf-shared-${var.shared_infra_name}-${data.aws_caller_identity.current.account_id}-${var.region}",
   )
+  expose_microservices_api_gateway = var.create_api_gateway && var.create_eks && var.expose_microservices_api_gateway
+  microservice_names = [
+    "oficina-os-service",
+    "oficina-billing-service",
+    "oficina-execution-service",
+  ]
+  microservice_private_nlb_names = {
+    oficina-os-service        = substr("${var.cluster_name}-os-service", 0, 32)
+    oficina-billing-service   = substr("${var.cluster_name}-billing-service", 0, 32)
+    oficina-execution-service = substr("${var.cluster_name}-execution-service", 0, 32)
+  }
+  microservice_public_route_services = {
+    "POST /api/v1/clientes"                                     = "oficina-os-service"
+    "GET /api/v1/clientes"                                      = "oficina-os-service"
+    "GET /api/v1/clientes/{clienteId}"                          = "oficina-os-service"
+    "PUT /api/v1/clientes/{clienteId}"                          = "oficina-os-service"
+    "POST /api/v1/clientes/{clienteId}/veiculos"                = "oficina-os-service"
+    "GET /api/v1/clientes/{clienteId}/veiculos"                 = "oficina-os-service"
+    "GET /api/v1/veiculos/{veiculoId}"                          = "oficina-os-service"
+    "PUT /api/v1/veiculos/{veiculoId}"                          = "oficina-os-service"
+    "POST /api/v1/ordens-servico"                               = "oficina-os-service"
+    "GET /api/v1/ordens-servico"                                = "oficina-os-service"
+    "GET /api/v1/ordens-servico/{ordemServicoId}"               = "oficina-os-service"
+    "GET /api/v1/ordens-servico/{ordemServicoId}/historico"     = "oficina-os-service"
+    "PATCH /api/v1/ordens-servico/{ordemServicoId}/estado"      = "oficina-os-service"
+    "POST /api/v1/ordens-servico/{ordemServicoId}/cancelamento" = "oficina-os-service"
+    "POST /api/v1/orcamentos"                                   = "oficina-billing-service"
+    "GET /api/v1/orcamentos/{orcamentoId}"                      = "oficina-billing-service"
+    "GET /api/v1/ordens-servico/{ordemServicoId}/orcamentos"    = "oficina-billing-service"
+    "POST /api/v1/orcamentos/{orcamentoId}/aprovacao"           = "oficina-billing-service"
+    "POST /api/v1/orcamentos/{orcamentoId}/recusa"              = "oficina-billing-service"
+    "POST /api/v1/pagamentos"                                   = "oficina-billing-service"
+    "GET /api/v1/pagamentos/{pagamentoId}"                      = "oficina-billing-service"
+    "GET /api/v1/ordens-servico/{ordemServicoId}/pagamentos"    = "oficina-billing-service"
+    "POST /api/v1/pagamentos/{pagamentoId}/confirmacao"         = "oficina-billing-service"
+    "POST /api/v1/pagamentos/{pagamentoId}/recusa"              = "oficina-billing-service"
+    "POST /api/v1/pagamentos/{pagamentoId}/cancelamento"        = "oficina-billing-service"
+    "POST /api/v1/servicos"                                     = "oficina-execution-service"
+    "GET /api/v1/servicos"                                      = "oficina-execution-service"
+    "GET /api/v1/servicos/{servicoId}"                          = "oficina-execution-service"
+    "PUT /api/v1/servicos/{servicoId}"                          = "oficina-execution-service"
+    "POST /api/v1/pecas"                                        = "oficina-execution-service"
+    "GET /api/v1/pecas"                                         = "oficina-execution-service"
+    "GET /api/v1/pecas/{pecaId}"                                = "oficina-execution-service"
+    "PUT /api/v1/pecas/{pecaId}"                                = "oficina-execution-service"
+    "GET /api/v1/estoques/pecas/{pecaId}/saldo"                 = "oficina-execution-service"
+    "GET /api/v1/estoques/movimentos"                           = "oficina-execution-service"
+    "POST /api/v1/estoques/movimentos/entrada"                  = "oficina-execution-service"
+    "POST /api/v1/estoques/movimentos/reserva"                  = "oficina-execution-service"
+    "POST /api/v1/estoques/movimentos/consumo"                  = "oficina-execution-service"
+    "POST /api/v1/estoques/movimentos/estorno"                  = "oficina-execution-service"
+    "POST /api/v1/execucoes"                                    = "oficina-execution-service"
+    "GET /api/v1/execucoes"                                     = "oficina-execution-service"
+    "GET /api/v1/execucoes/fila"                                = "oficina-execution-service"
+    "GET /api/v1/execucoes/{execucaoId}"                        = "oficina-execution-service"
+    "GET /api/v1/ordens-servico/{ordemServicoId}/execucao"      = "oficina-execution-service"
+    "POST /api/v1/execucoes/{execucaoId}/diagnostico/inicio"    = "oficina-execution-service"
+    "POST /api/v1/execucoes/{execucaoId}/diagnostico/conclusao" = "oficina-execution-service"
+    "POST /api/v1/execucoes/{execucaoId}/reparo/inicio"         = "oficina-execution-service"
+    "POST /api/v1/execucoes/{execucaoId}/reparo/conclusao"      = "oficina-execution-service"
+    "POST /api/v1/execucoes/{execucaoId}/cancelamento"          = "oficina-execution-service"
+  }
+  microservice_public_api_gateway_http_routes = local.expose_microservices_api_gateway ? {
+    for route_key, service_name in local.microservice_public_route_services : route_key => {
+      integration_uri = module.microservice_private_nlb[service_name].listener_arn
+      connection_type = "VPC_LINK"
+    }
+  } : {}
+  api_gateway_http_routes = merge(
+    local.microservice_public_api_gateway_http_routes,
+    var.api_gateway_http_routes,
+  )
+  api_gateway_vpc_link_security_group_ids = local.expose_microservices_api_gateway ? concat(
+    var.api_gateway_vpc_link_security_group_ids,
+    [aws_security_group.microservices_api_gateway_vpc_link[0].id],
+  ) : var.api_gateway_vpc_link_security_group_ids
+  api_gateway_create_vpc_link_security_group = local.expose_microservices_api_gateway ? false : var.api_gateway_create_vpc_link_security_group
   input_execution_dynamodb_table_prefix = (
     var.execution_dynamodb_table_prefix != null && trimspace(var.execution_dynamodb_table_prefix) != "" ? var.execution_dynamodb_table_prefix : null
   )
@@ -262,6 +339,40 @@ resource "aws_vpc_security_group_ingress_rule" "rds_from_eks_cluster" {
   description                  = "PostgreSQL a partir do security group do cluster EKS ${var.cluster_name}"
 }
 
+resource "aws_security_group" "microservices_api_gateway_vpc_link" {
+  count = local.expose_microservices_api_gateway ? 1 : 0
+
+  name        = "${local.api_gateway_name}-microservices-vpc-link"
+  description = "Security group do VPC Link do API Gateway para os microsservicos"
+  vpc_id      = local.resolved_vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(local.default_tags, {
+    Name = "${local.api_gateway_name}-microservices-vpc-link"
+  })
+}
+
+module "microservice_private_nlb" {
+  for_each = local.expose_microservices_api_gateway ? toset(local.microservice_names) : []
+  source   = "../../modules/internal_nodeport_nlb"
+
+  name                              = local.microservice_private_nlb_names[each.key]
+  vpc_id                            = local.resolved_vpc_id
+  subnet_ids                        = local.resolved_subnet_ids
+  listener_port                     = var.microservice_private_listener_ports[each.key]
+  target_node_port                  = var.microservice_node_ports[each.key]
+  target_autoscaling_group_name     = module.eks[0].node_group_autoscaling_group_name
+  allowed_source_security_group_ids = local.api_gateway_vpc_link_security_group_ids
+  target_security_group_ids         = [module.eks[0].cluster_security_group_id]
+  tags                              = local.default_tags
+}
+
 module "ecr" {
   for_each = var.create_ecr_repositories ? var.ecr_repository_names : []
   source   = "../../modules/ecr"
@@ -283,9 +394,9 @@ module "api_gateway" {
   enable_detailed_metrics              = var.api_gateway_enable_detailed_metrics
   vpc_id                               = local.resolved_vpc_id
   vpc_link_subnet_ids                  = length(var.api_gateway_vpc_link_subnet_ids) > 0 ? var.api_gateway_vpc_link_subnet_ids : local.resolved_subnet_ids
-  vpc_link_security_group_ids          = var.api_gateway_vpc_link_security_group_ids
-  create_vpc_link_security_group       = var.api_gateway_create_vpc_link_security_group
-  http_routes                          = var.api_gateway_http_routes
+  vpc_link_security_group_ids          = local.api_gateway_vpc_link_security_group_ids
+  create_vpc_link_security_group       = local.api_gateway_create_vpc_link_security_group
+  http_routes                          = local.api_gateway_http_routes
   jwt_authorizers                      = var.api_gateway_jwt_authorizers
   lambda_routes                        = var.api_gateway_lambda_routes
   tags                                 = local.default_tags

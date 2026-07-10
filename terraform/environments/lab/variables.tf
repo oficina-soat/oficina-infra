@@ -288,6 +288,46 @@ variable "api_gateway_create_vpc_link_security_group" {
   default     = true
 }
 
+variable "expose_microservices_api_gateway" {
+  type        = bool
+  description = "Quando true, publica as rotas REST de negocio dos microsservicos no HTTP API por VPC_LINK, NLB interno e NodePorts."
+  default     = true
+}
+
+variable "microservice_private_listener_ports" {
+  type        = map(number)
+  description = "Portas privadas dos listeners NLB usados pelo API Gateway para cada microsservico."
+  default = {
+    oficina-os-service        = 8081
+    oficina-billing-service   = 8082
+    oficina-execution-service = 8083
+  }
+
+  validation {
+    condition = alltrue([
+      for port in values(var.microservice_private_listener_ports) : port >= 1 && port <= 65535
+    ])
+    error_message = "microservice_private_listener_ports deve conter apenas portas entre 1 e 65535."
+  }
+}
+
+variable "microservice_node_ports" {
+  type        = map(number)
+  description = "NodePorts fixos dos Services Kubernetes dos microsservicos. Devem corresponder aos manifests em k8s/base/microservices."
+  default = {
+    oficina-os-service        = 30081
+    oficina-billing-service   = 30082
+    oficina-execution-service = 30083
+  }
+
+  validation {
+    condition = alltrue([
+      for port in values(var.microservice_node_ports) : port >= 30000 && port <= 32767
+    ])
+    error_message = "microservice_node_ports deve conter apenas portas entre 30000 e 32767."
+  }
+}
+
 variable "create_terraform_shared_data_bucket" {
   type        = bool
   description = "Quando true, cria o bucket S3 compartilhado usado por states e dados de infraestrutura."
