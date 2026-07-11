@@ -17,6 +17,8 @@ MICROSERVICE_NAMES="${MICROSERVICE_NAMES:-oficina-os-service oficina-billing-ser
 FORWARD_MICROSERVICES="${FORWARD_MICROSERVICES:-true}"
 FORWARD_MAILHOG="${FORWARD_MAILHOG:-true}"
 VERIFY_SWAGGER="${VERIFY_SWAGGER:-true}"
+PORT_FORWARD_KEEPALIVE="${PORT_FORWARD_KEEPALIVE:-true}"
+PORT_FORWARD_RETRY_SECONDS="${PORT_FORWARD_RETRY_SECONDS:-2}"
 
 OFICINA_OS_LOCAL_PORT="${OFICINA_OS_LOCAL_PORT:-8081}"
 OFICINA_BILLING_LOCAL_PORT="${OFICINA_BILLING_LOCAL_PORT:-8082}"
@@ -44,6 +46,8 @@ Variaveis suportadas:
   FORWARD_MICROSERVICES         true|false. Default: true
   FORWARD_MAILHOG               true|false. Default: true
   VERIFY_SWAGGER                true|false. Valida /q/openapi e /q/swagger-ui. Default: true
+  PORT_FORWARD_KEEPALIVE        true|false. Reinicia port-forward apos recriacao de pods. Default: true
+  PORT_FORWARD_RETRY_SECONDS    Intervalo entre tentativas quando KEEPALIVE=true. Default: 2
   OFICINA_OS_LOCAL_PORT         Porta local do oficina-os-service. Default: 8081
   OFICINA_BILLING_LOCAL_PORT    Porta local do oficina-billing-service. Default: 8082
   OFICINA_EXECUTION_LOCAL_PORT  Porta local do oficina-execution-service. Default: 8083
@@ -155,13 +159,58 @@ port_forward_ports_open() {
 	return 0
 }
 
+ensure_local_ports_available() {
+	local ports="$1"
+	local mapping local_port
+
+	for mapping in ${ports}; do
+		local_port="${mapping%%:*}"
+		if local_port_open "${local_port}"; then
+			fail "porta local ${local_port} ja esta em uso e nao pertence a um port-forward gerenciado por este script. Encerre o processo atual ou configure outra porta local."
+		fi
+	done
+}
+
 pid_is_port_forward() {
 	local pid="$1"
 	local service_name="$2"
 	local command_line
 
 	command_line="$(ps -p "${pid}" -o command= 2>/dev/null || true)"
-	[[ "${command_line}" == *"kubectl"* && "${command_line}" == *"port-forward"* && "${command_line}" == *"svc/${service_name}"* ]]
+	[[ "${command_line}" == *"kubectl"* && "${command_line}" == *"port-forward"* && "${command_line}" == *"svc/${service_name}"* ]] ||
+		[[ "${command_line}" == *"__port_forward_loop"* && "${command_line}" == *" ${service_name} "* ]]
+}
+
+pid_is_keepalive_port_forward() {
+	local pid="$1"
+	local command_line
+
+	command_line="$(ps -p "${pid}" -o command= 2>/dev/null || true)"
+	[[ "${command_line}" == *"__port_forward_loop_v3"* ]]
+}
+
+stop_port_forward_pid() {
+	local pid="$1"
+	local child_pid
+
+	if ! kill -0 "${pid}" >/dev/null 2>&1; then
+		return 0
+	fi
+
+	for child_pid in $(pgrep -P "${pid}" 2>/dev/null || true); do
+		kill -TERM "-${child_pid}" >/dev/null 2>&1 || kill -TERM "${child_pid}" >/dev/null 2>&1 || true
+	done
+
+	kill -TERM "-${pid}" >/dev/null 2>&1 || kill -TERM "${pid}" >/dev/null 2>&1 || true
+	sleep 1
+
+	for child_pid in $(pgrep -P "${pid}" 2>/dev/null || true); do
+		kill -KILL "-${child_pid}" >/dev/null 2>&1 || kill -KILL "${child_pid}" >/dev/null 2>&1 || true
+	done
+
+	if kill -0 "${pid}" >/dev/null 2>&1; then
+		kill -KILL "-${pid}" >/dev/null 2>&1 || kill -KILL "${pid}" >/dev/null 2>&1 || true
+	fi
 }
 
 wait_for_port_forward() {
@@ -218,6 +267,55 @@ append_summary() {
 	PORT_FORWARD_SUMMARY+="${line}"$'\n'
 }
 
+run_port_forward_loop() {
+	local namespace="$1"
+	local service_name="$2"
+	local log_file="$3"
+	local retry_seconds="$4"
+	shift 4
+	local -a port_args=("$@")
+	local status
+
+	trap 'exit 0' INT TERM
+
+	while true; do
+		printf '[%s] iniciando kubectl port-forward svc/%s %s\n' "$(date -Is)" "${service_name}" "${port_args[*]}" >>"${log_file}"
+		set +e
+		if command -v setsid >/dev/null 2>&1; then
+			setsid kubectl --namespace "${namespace}" port-forward "svc/${service_name}" "${port_args[@]}" >>"${log_file}" 2>&1
+		else
+			kubectl --namespace "${namespace}" port-forward "svc/${service_name}" "${port_args[@]}" >>"${log_file}" 2>&1
+		fi
+		status=$?
+		set -e
+		printf '[%s] kubectl port-forward svc/%s encerrou com status %s; reiniciando em %ss\n' "$(date -Is)" "${service_name}" "${status}" "${retry_seconds}" >>"${log_file}"
+		sleep "${retry_seconds}" &
+		wait $! || exit 0
+	done
+}
+
+start_port_forward_process() {
+	local namespace="$1"
+	local service_name="$2"
+	local log_file="$3"
+	shift 3
+	local -a port_args=("$@")
+
+	if [[ "${PORT_FORWARD_KEEPALIVE}" == "true" ]]; then
+		if command -v setsid >/dev/null 2>&1; then
+			setsid "${BASH}" "${BASH_SOURCE[0]}" __port_forward_loop_v3 "${namespace}" "${service_name}" "${log_file}" "${PORT_FORWARD_RETRY_SECONDS}" "${port_args[@]}" &
+		else
+			nohup "${BASH}" "${BASH_SOURCE[0]}" __port_forward_loop_v3 "${namespace}" "${service_name}" "${log_file}" "${PORT_FORWARD_RETRY_SECONDS}" "${port_args[@]}" &
+		fi
+	else
+		if command -v setsid >/dev/null 2>&1; then
+			setsid kubectl --namespace "${namespace}" port-forward "svc/${service_name}" "${port_args[@]}" >"${log_file}" 2>&1 &
+		else
+			nohup kubectl --namespace "${namespace}" port-forward "svc/${service_name}" "${port_args[@]}" >"${log_file}" 2>&1 &
+		fi
+	fi
+}
+
 start_port_forward() {
 	local namespace="$1"
 	local service_name="$2"
@@ -241,21 +339,23 @@ start_port_forward() {
 	if [[ -f "${pid_file}" ]]; then
 		local existing_pid
 		existing_pid="$(cat "${pid_file}")"
-		if kill -0 "${existing_pid}" >/dev/null 2>&1 && pid_is_port_forward "${existing_pid}" "${service_name}" && port_forward_ports_open "${ports}"; then
-			log "Port-forward ja ativo para ${namespace}/${service_name} (pid ${existing_pid})"
-			append_summary "${summary_line}"
-			return 0
+		if kill -0 "${existing_pid}" >/dev/null 2>&1 && pid_is_port_forward "${existing_pid}" "${service_name}"; then
+			if port_forward_ports_open "${ports}" && { [[ "${PORT_FORWARD_KEEPALIVE}" != "true" ]] || pid_is_keepalive_port_forward "${existing_pid}"; }; then
+				log "Port-forward ja ativo para ${namespace}/${service_name} (pid ${existing_pid})"
+				append_summary "${summary_line}"
+				return 0
+			fi
+
+			log "Port-forward antigo para ${namespace}/${service_name} nao esta resiliente ou nao esta saudavel; reiniciando."
+			stop_port_forward_pid "${existing_pid}"
 		fi
 		rm -f "${pid_file}"
 	fi
 
 	log "Iniciando port-forward para ${namespace}/${service_name} em ${ports}"
+	ensure_local_ports_available "${ports}"
 	: >"${log_file}"
-	if command -v setsid >/dev/null 2>&1; then
-		setsid kubectl --namespace "${namespace}" port-forward "svc/${service_name}" "${port_args[@]}" >"${log_file}" 2>&1 &
-	else
-		nohup kubectl --namespace "${namespace}" port-forward "svc/${service_name}" "${port_args[@]}" >"${log_file}" 2>&1 &
-	fi
+	start_port_forward_process "${namespace}" "${service_name}" "${log_file}" "${port_args[@]}"
 	local pf_pid=$!
 	echo "${pf_pid}" >"${pid_file}"
 
@@ -287,6 +387,12 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
 	exit 0
 fi
 
+if [[ "${1:-}" == "__port_forward_loop_v3" ]]; then
+	shift
+	run_port_forward_loop "$@"
+	exit 0
+fi
+
 require_cmd kubectl
 if [[ "${VERIFY_SWAGGER}" == "true" ]]; then
 	require_cmd curl
@@ -305,6 +411,8 @@ MICROSERVICE_NAMES=$(normalize_services)
 FORWARD_MICROSERVICES=${FORWARD_MICROSERVICES}
 FORWARD_MAILHOG=${FORWARD_MAILHOG}
 VERIFY_SWAGGER=${VERIFY_SWAGGER}
+PORT_FORWARD_KEEPALIVE=${PORT_FORWARD_KEEPALIVE}
+PORT_FORWARD_RETRY_SECONDS=${PORT_FORWARD_RETRY_SECONDS}
 OFICINA_OS_LOCAL_PORT=${OFICINA_OS_LOCAL_PORT}
 OFICINA_BILLING_LOCAL_PORT=${OFICINA_BILLING_LOCAL_PORT}
 OFICINA_EXECUTION_LOCAL_PORT=${OFICINA_EXECUTION_LOCAL_PORT}
