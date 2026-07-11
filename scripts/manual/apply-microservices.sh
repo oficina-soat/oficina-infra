@@ -20,6 +20,11 @@ OFICINA_AUTH_JWKS_URI="${OFICINA_AUTH_JWKS_URI:-}"
 JWT_SECRET_NAME="${JWT_SECRET_NAME:-oficina/lab/jwt}"
 JWT_SECRET_PUBLIC_KEY_FIELD="${JWT_SECRET_PUBLIC_KEY_FIELD:-publicKeyPem}"
 K8S_JWT_SECRET_NAME="${K8S_JWT_SECRET_NAME:-oficina-jwt-keys}"
+BILLING_MERCADO_PAGO_K8S_SECRET_NAME="${BILLING_MERCADO_PAGO_K8S_SECRET_NAME:-oficina-billing-service-mercado-pago-env}"
+OFICINA_MERCADO_PAGO_ENABLED="${OFICINA_MERCADO_PAGO_ENABLED:-}"
+OFICINA_MERCADO_PAGO_ACCESS_TOKEN="${OFICINA_MERCADO_PAGO_ACCESS_TOKEN:-}"
+OFICINA_MERCADO_PAGO_API_URL="${OFICINA_MERCADO_PAGO_API_URL:-}"
+OFICINA_MERCADO_PAGO_PAYER_EMAIL="${OFICINA_MERCADO_PAGO_PAYER_EMAIL:-}"
 WAIT_MICROSERVICE_ROLLOUT="${WAIT_MICROSERVICE_ROLLOUT:-false}"
 MICROSERVICE_ROLLOUT_TIMEOUT="${MICROSERVICE_ROLLOUT_TIMEOUT:-300s}"
 
@@ -46,6 +51,11 @@ Variaveis suportadas:
   JWT_SECRET_NAME               Secret AWS com chave publica JWT. Default: oficina/lab/jwt
   JWT_SECRET_PUBLIC_KEY_FIELD   Campo da chave publica no secret JWT. Default: publicKeyPem
   K8S_JWT_SECRET_NAME           Secret Kubernetes com publicKey.pem. Default: oficina-jwt-keys
+  BILLING_MERCADO_PAGO_K8S_SECRET_NAME Secret Kubernetes com variaveis Mercado Pago. Default: oficina-billing-service-mercado-pago-env
+  OFICINA_MERCADO_PAGO_ENABLED  true|false para habilitar integracao Mercado Pago no billing
+  OFICINA_MERCADO_PAGO_ACCESS_TOKEN Access Token Mercado Pago. Obrigatorio quando enabled=true
+  OFICINA_MERCADO_PAGO_API_URL  URL da API Mercado Pago. Opcional; o servico possui default
+  OFICINA_MERCADO_PAGO_PAYER_EMAIL Email pagador sandbox. Opcional; o servico possui default
   OFICINA_OS_SERVICE_IMAGE      Imagem completa opcional do oficina-os-service
   OFICINA_BILLING_SERVICE_IMAGE Imagem completa opcional do oficina-billing-service
   OFICINA_EXECUTION_SERVICE_IMAGE Imagem completa opcional do oficina-execution-service
@@ -113,6 +123,26 @@ normalize_url() {
   printf '%s' "${value}"
 }
 
+normalize_bool() {
+  local value="${1,,}"
+  local default_value="$2"
+
+  case "${value}" in
+    true|1|yes|y)
+      printf 'true'
+      ;;
+    false|0|no|n)
+      printf 'false'
+      ;;
+    "")
+      printf '%s' "${default_value}"
+      ;;
+    *)
+      fail "$3 deve ser true ou false"
+      ;;
+  esac
+}
+
 escape_sed_replacement() {
   printf '%s' "$1" | sed 's/[&|\\]/\\&/g'
 }
@@ -154,6 +184,51 @@ create_postgres_runtime_secret() {
     -o yaml | kubectl apply -f -
 }
 
+mercado_pago_runtime_configured() {
+  [[ -n "${OFICINA_MERCADO_PAGO_ENABLED}" ]] \
+    || [[ -n "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}" ]] \
+    || [[ -n "${OFICINA_MERCADO_PAGO_API_URL}" ]] \
+    || [[ -n "${OFICINA_MERCADO_PAGO_PAYER_EMAIL}" ]]
+}
+
+create_billing_mercado_pago_secret() {
+  local enabled tmp_file
+
+  enabled="$(normalize_bool "${OFICINA_MERCADO_PAGO_ENABLED}" "false" "OFICINA_MERCADO_PAGO_ENABLED")"
+
+  if [[ "${enabled}" == "true" ]]; then
+    require_non_empty "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}" "OFICINA_MERCADO_PAGO_ACCESS_TOKEN"
+  elif ! mercado_pago_runtime_configured; then
+    log "Mercado Pago nao configurado para o billing; secret ${BILLING_MERCADO_PAGO_K8S_SECRET_NAME} nao sera criado"
+    return
+  fi
+
+  tmp_file="$(mktemp)"
+
+  {
+    printf 'OFICINA_MERCADO_PAGO_ENABLED=%s\n' "${enabled}"
+    if [[ -n "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}" ]]; then
+      printf 'OFICINA_MERCADO_PAGO_ACCESS_TOKEN=%s\n' "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}"
+    fi
+    if [[ -n "${OFICINA_MERCADO_PAGO_API_URL}" ]]; then
+      printf 'OFICINA_MERCADO_PAGO_API_URL=%s\n' "${OFICINA_MERCADO_PAGO_API_URL}"
+    fi
+    if [[ -n "${OFICINA_MERCADO_PAGO_PAYER_EMAIL}" ]]; then
+      printf 'OFICINA_MERCADO_PAGO_PAYER_EMAIL=%s\n' "${OFICINA_MERCADO_PAGO_PAYER_EMAIL}"
+    fi
+  } > "${tmp_file}"
+
+  if ! kubectl create secret generic "${BILLING_MERCADO_PAGO_K8S_SECRET_NAME}" \
+    --namespace "${K8S_NAMESPACE}" \
+    "--from-env-file=${tmp_file}" \
+    --dry-run=client \
+    -o yaml | kubectl apply -f -; then
+    rm -f "${tmp_file}"
+    return 1
+  fi
+  rm -f "${tmp_file}"
+}
+
 k8s_secret_data_checksum() {
   local k8s_secret_name="$1"
 
@@ -171,8 +246,15 @@ k8s_secret_data_checksum() {
 record_runtime_secret_checksum() {
   local service="$1"
   local k8s_secret_name="$2"
+  local checksum current
 
-  SERVICE_RUNTIME_SECRET_CHECKSUMS["${service}"]="$(k8s_secret_data_checksum "${k8s_secret_name}")"
+  checksum="$(k8s_secret_data_checksum "${k8s_secret_name}")"
+  current="${SERVICE_RUNTIME_SECRET_CHECKSUMS[${service}]:-}"
+  if [[ -n "${current}" ]]; then
+    SERVICE_RUNTIME_SECRET_CHECKSUMS["${service}"]="${current}-${checksum}"
+  else
+    SERVICE_RUNTIME_SECRET_CHECKSUMS["${service}"]="${checksum}"
+  fi
 }
 
 create_jwt_public_key_secret() {
@@ -313,10 +395,11 @@ prepare_service_manifest() {
   local service="$1"
   local image="$2"
   local target_dir="$3"
-  local escaped_image escaped_issuer escaped_jwks
+  local escaped_billing_mercado_pago_secret escaped_image escaped_issuer escaped_jwks
 
   cp -R "${REPO_ROOT}/k8s/base/microservices/${service}" "${target_dir}/${service}"
 
+  escaped_billing_mercado_pago_secret="$(escape_sed_replacement "${BILLING_MERCADO_PAGO_K8S_SECRET_NAME}")"
   escaped_image="$(escape_sed_replacement "${image}")"
   escaped_issuer="$(escape_sed_replacement "${OFICINA_AUTH_ISSUER}")"
   escaped_jwks="$(escape_sed_replacement "${OFICINA_AUTH_JWKS_URI}")"
@@ -325,6 +408,7 @@ prepare_service_manifest() {
     -e "s|IMAGE_PLACEHOLDER|${escaped_image}|g" \
     -e "s|OFICINA_AUTH_ISSUER_PLACEHOLDER|${escaped_issuer}|g" \
     -e "s|OFICINA_AUTH_JWKS_URI_PLACEHOLDER|${escaped_jwks}|g" \
+    -e "s|BILLING_MERCADO_PAGO_K8S_SECRET_NAME_PLACEHOLDER|${escaped_billing_mercado_pago_secret}|g" \
     "${target_dir}/${service}"/*.yaml
 }
 
@@ -481,6 +565,10 @@ fi
 if service_is_ready "oficina-billing-service"; then
   create_postgres_runtime_secret "oficina/lab/database/oficina-billing-service" "oficina-billing-service-database-env"
   record_runtime_secret_checksum "oficina-billing-service" "oficina-billing-service-database-env"
+  create_billing_mercado_pago_secret
+  if kubectl get secret "${BILLING_MERCADO_PAGO_K8S_SECRET_NAME}" --namespace "${K8S_NAMESPACE}" >/dev/null 2>&1; then
+    record_runtime_secret_checksum "oficina-billing-service" "${BILLING_MERCADO_PAGO_K8S_SECRET_NAME}"
+  fi
 fi
 
 apply_ready_manifests
