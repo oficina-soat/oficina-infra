@@ -78,7 +78,9 @@ aws ec2 modify-instance-metadata-options \
 
 - Logs: coletados dos pods pelo receiver `filelog`.
 - Métricas Prometheus e Kubernetes: coletadas pelos receivers `prometheus`, `hostmetrics`, `kubeletstats`, `k8s_events` e `kube-state-metrics`.
-- Traces: recebidos por OTLP/gRPC no Service interno `nr-k8s-otel-collector-gateway`.
+- Métricas Prometheus dos microsserviços: o Deployment do collector adiciona o receiver `prometheus/oficina-microservices`, que descobre pods `oficina-os-service`, `oficina-billing-service` e `oficina-execution-service` no namespace `default` e raspa `/q/metrics` na porta `http`.
+- Traces: recebidos por OTLP/gRPC no Service interno `nr-k8s-otel-collector-gateway` e enviados pela pipeline `traces/oficina-microservices`.
+- Logs de eventos/Outbox: os microsserviços emitem `eventType` no JSON do stdout. Como `eventType` é reservado na ingestão do New Relic, as imagens dos microsserviços também devem emitir os aliases `domainEventType` e `event.type`, mantendo o campo original no log do pod e fornecendo atributos consultáveis por NRQL.
 
 Depois da instalação no `eks-lab`, valide:
 
@@ -86,6 +88,25 @@ Depois da instalação no `eks-lab`, valide:
 kubectl -n newrelic get pods
 kubectl -n newrelic get svc nr-k8s-otel-collector-gateway
 kubectl -n newrelic logs -l app.kubernetes.io/name=nr-k8s-otel-collector --tail=100
+kubectl -n newrelic logs deploy/nr-k8s-otel-collector-deployment --tail=100 | grep oficina-microservices
+```
+
+No New Relic, o chart envia os dados para `Metric`, `OtlpInfrastructureEvent` e `Log`. Consultas mínimas esperadas após alguns ciclos de scrape:
+
+```nrql
+FROM Metric SELECT keyset() WHERE k8s.cluster.name = 'eks-lab' SINCE 30 minutes ago
+```
+
+```nrql
+FROM Metric SELECT keyset() WHERE service.namespace = 'oficina' SINCE 30 minutes ago
+```
+
+```nrql
+FROM Span SELECT count(*) WHERE service.namespace = 'oficina' SINCE 30 minutes ago FACET service.name
+```
+
+```nrql
+FROM Log SELECT count(*) WHERE service.namespace = 'oficina' AND domainEventType IS NOT NULL SINCE 30 minutes ago FACET service.name, domainEventType
 ```
 
 As evidências finais de logs, métricas, traces, dashboards e alertas devem ser registradas no [checklist final da Fase 4](../../oficina-platform/docs/phase-4-delivery-checklist.md).

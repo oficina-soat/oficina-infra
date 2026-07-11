@@ -20,6 +20,10 @@ spec:
       maxSurge: 1
   template:
     metadata:
+      annotations:
+        prometheus.io/path: /q/metrics
+        prometheus.io/port: "8080"
+        prometheus.io/scrape: "true"
       labels:
         app.kubernetes.io/name: oficina-execution-service
         app.kubernetes.io/part-of: oficina

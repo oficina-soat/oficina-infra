@@ -36,6 +36,95 @@ receivers:
 deployment:
   extraArgs:
     - "--config=yaml:exporters::otlp_http/newrelic::endpoint: NEW_RELIC_OTLP_ENDPOINT_PLACEHOLDER"
+  configMap:
+    extraConfig:
+      receivers:
+        prometheus/oficina-microservices:
+          config:
+            scrape_configs:
+              - job_name: oficina-microservices
+                scrape_interval: 30s
+                metrics_path: /q/metrics
+                kubernetes_sd_configs:
+                  - role: pod
+                    namespaces:
+                      names:
+                        - default
+                relabel_configs:
+                  - action: keep
+                    source_labels:
+                      - __meta_kubernetes_pod_ready
+                    regex: "true"
+                  - action: keep
+                    source_labels:
+                      - __meta_kubernetes_pod_label_app_kubernetes_io_part_of
+                      - __meta_kubernetes_pod_label_app_kubernetes_io_component
+                    regex: oficina;service
+                  - action: keep
+                    source_labels:
+                      - __meta_kubernetes_pod_label_app_kubernetes_io_name
+                    regex: oficina-(os|billing|execution)-service
+                  - action: keep
+                    source_labels:
+                      - __meta_kubernetes_pod_container_port_name
+                    regex: http
+                  - action: replace
+                    source_labels:
+                      - __meta_kubernetes_pod_label_app_kubernetes_io_name
+                    target_label: service_name
+                  - action: replace
+                    target_label: service_namespace
+                    replacement: oficina
+                  - action: replace
+                    target_label: deployment_environment
+                    replacement: lab
+                  - action: replace
+                    source_labels:
+                      - __meta_kubernetes_namespace
+                    target_label: namespace
+                  - action: replace
+                    source_labels:
+                      - __meta_kubernetes_pod_name
+                    target_label: pod
+                  - action: replace
+                    source_labels:
+                      - __meta_kubernetes_pod_container_name
+                    target_label: container
+                  - action: replace
+                    target_label: job_label
+                    replacement: oficina-microservices
+      processors:
+        transform/oficina_microservices:
+          error_mode: ignore
+          metric_statements:
+            - context: datapoint
+              statements:
+                - set(resource.attributes["service.name"], datapoint.attributes["service_name"]) where datapoint.attributes["service_name"] != nil
+                - set(resource.attributes["service.namespace"], datapoint.attributes["service_namespace"]) where datapoint.attributes["service_namespace"] != nil
+                - set(resource.attributes["deployment.environment"], datapoint.attributes["deployment_environment"]) where datapoint.attributes["deployment_environment"] != nil
+                - set(resource.attributes["k8s.namespace.name"], datapoint.attributes["namespace"]) where datapoint.attributes["namespace"] != nil
+                - set(resource.attributes["k8s.pod.name"], datapoint.attributes["pod"]) where datapoint.attributes["pod"] != nil
+                - set(resource.attributes["k8s.container.name"], datapoint.attributes["container"]) where datapoint.attributes["container"] != nil
+      pipelines:
+        metrics/oficina-microservices:
+          receivers:
+            - prometheus/oficina-microservices
+          processors:
+            - memory_limiter
+            - transform/oficina_microservices
+            - resource/newrelic
+            - cumulativetodelta
+          exporters:
+            - routing/metrics_egress
+        traces/oficina-microservices:
+          receivers:
+            - otlp
+          processors:
+            - memory_limiter
+            - resource/newrelic
+            - batch
+          exporters:
+            - otlp_http/newrelic
 
 daemonset:
   extraArgs:
