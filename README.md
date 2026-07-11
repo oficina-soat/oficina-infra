@@ -150,6 +150,13 @@ Variáveis mínimas esperadas:
 - `CREATE_DOMAIN_MESSAGING=false`, quando SNS/SQS da Fase 4 não devem ser criados pelo workflow
 - `INSTALL_NEW_RELIC_OTEL_COLLECTOR=auto`, `NEW_RELIC_LICENSE_KEY` e `NEW_RELIC_OTLP_ENDPOINT`, quando o New Relic OpenTelemetry Collector deve ser instalado no cluster; use `INSTALL_NEW_RELIC_OTEL_COLLECTOR=false` para desabilitar explicitamente a etapa
 
+Integração Mercado Pago do `oficina-billing-service`:
+
+- secret `OFICINA_MERCADO_PAGO_ACCESS_TOKEN`, obrigatório apenas quando a integração estiver habilitada
+- variável `OFICINA_MERCADO_PAGO_ENABLED=true`, para habilitar a integração no ambiente `lab`
+- variável opcional `OFICINA_MERCADO_PAGO_PAYER_EMAIL`, apenas quando o teste exigir sobrescrever o e-mail pagador default
+- variável opcional `OFICINA_MERCADO_PAGO_API_URL`, apenas quando for necessário sobrescrever `https://api.mercadopago.com`
+
 Comando local equivalente:
 
 ```bash
