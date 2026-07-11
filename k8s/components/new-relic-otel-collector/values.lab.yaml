@@ -116,6 +116,15 @@ deployment:
             - cumulativetodelta
           exporters:
             - routing/metrics_egress
+        traces/oficina-microservices:
+          receivers:
+            - otlp
+          processors:
+            - memory_limiter
+            - resource/newrelic
+            - batch
+          exporters:
+            - otlp_http/newrelic
 
 daemonset:
   extraArgs:
