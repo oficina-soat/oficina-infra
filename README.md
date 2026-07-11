@@ -59,6 +59,22 @@ O script cria ou atualiza os secrets Kubernetes de runtime, resolve `OFICINA_AUT
 
 Os workflows dos microsserviços também usam esse script para materializar ou atualizar apenas o próprio serviço. Para isso, informam `MICROSERVICE_NAMES=<nome-do-servico>`, a variável de imagem correspondente (`OFICINA_OS_SERVICE_IMAGE`, `OFICINA_BILLING_SERVICE_IMAGE` ou `OFICINA_EXECUTION_SERVICE_IMAGE`) e `WAIT_MICROSERVICE_ROLLOUT=true`. Quando `OFICINA_AUTH_ISSUER` não é informado e o Terraform output não está disponível no checkout do workflow do serviço, o script descobre o endpoint pelo HTTP API `API_GATEWAY_NAME`, cujo padrão é `eks-lab-http-api`.
 
+Para acessar localmente os microsserviços implantados no EKS sem publicar endpoints operacionais no API Gateway, use o port-forward controlado:
+
+```bash
+scripts/manual/start-port-forwards.sh
+```
+
+O script encaminha os Services Kubernetes para portas locais e valida `/q/openapi` e `/q/swagger-ui` de cada microsserviço:
+
+| Serviço | Swagger UI | OpenAPI |
+|---|---|---|
+| `oficina-os-service` | `http://localhost:8081/q/swagger-ui` | `http://localhost:8081/q/openapi` |
+| `oficina-billing-service` | `http://localhost:8082/q/swagger-ui` | `http://localhost:8082/q/openapi` |
+| `oficina-execution-service` | `http://localhost:8083/q/swagger-ui` | `http://localhost:8083/q/openapi` |
+
+Se alguma porta local já estiver em uso, sobrescreva `OFICINA_OS_LOCAL_PORT`, `OFICINA_BILLING_LOCAL_PORT` ou `OFICINA_EXECUTION_LOCAL_PORT`. Para restringir a execução, use `MICROSERVICE_NAMES=oficina-os-service`.
+
 ## Observabilidade New Relic
 
 O New Relic OpenTelemetry Collector do ambiente `lab` é instalado via Helm no cluster `eks-lab`, usando license key fornecida por variável/secret de deploy e valores versionados em [k8s/components/new-relic-otel-collector/values.lab.yaml](k8s/components/new-relic-otel-collector/values.lab.yaml). No workflow de deploy, o modo padrão `INSTALL_NEW_RELIC_OTEL_COLLECTOR=auto` instala ou atualiza o collector quando a secret GitHub `NEW_RELIC_LICENSE_KEY` está configurada.
@@ -80,6 +96,7 @@ Arquivos principais:
 - [scripts/local/bootstrap-local.sh](scripts/local/bootstrap-local.sh)
 - [scripts/manual/bootstrap-service-databases.sh](scripts/manual/bootstrap-service-databases.sh)
 - [scripts/manual/bootstrap-service-databases-k8s.sh](scripts/manual/bootstrap-service-databases-k8s.sh)
+- [scripts/manual/start-port-forwards.sh](scripts/manual/start-port-forwards.sh)
 - [scripts/manual/install-new-relic-otel-collector.sh](scripts/manual/install-new-relic-otel-collector.sh)
 - [scripts/actions/ci-deploy.sh](scripts/actions/ci-deploy.sh)
 
