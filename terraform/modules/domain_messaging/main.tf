@@ -147,8 +147,11 @@ data "aws_iam_policy_document" "producer" {
   for_each = local.producer_policy_services
 
   statement {
-    sid     = "PublishDomainEvents"
-    actions = ["sns:Publish"]
+    sid = "PublishDomainEvents"
+    actions = [
+      "sns:GetTopicAttributes",
+      "sns:Publish",
+    ]
     resources = [
       for route_key, route in local.routes :
       aws_sns_topic.this[route_key].arn
