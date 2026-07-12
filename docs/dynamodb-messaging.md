@@ -38,7 +38,7 @@ Flags principais:
 | `oficina-execution-lab-outbox` | `NEW_AND_OLD_IMAGES` | `expiresAt` |
 | `oficina-execution-lab-idempotencia` | Desabilitado | `expiresAt` |
 
-As tabelas usam `PAY_PER_REQUEST` e criptografia server-side. O módulo cria a política IAM `oficina-execution-lab-runtime-dynamodb`, que deve ser anexada somente ao runtime do `oficina-execution-service`.
+As tabelas usam `PAY_PER_REQUEST` e criptografia server-side. O módulo cria a política IAM `oficina-execution-lab-runtime-dynamodb-<hash-12>`, que deve ser anexada somente ao runtime do `oficina-execution-service`.
 
 ## Mensageria SNS/SQS
 
@@ -58,14 +58,16 @@ Para cada evento:
 
 As políticas IAM de mensageria são separadas por serviço:
 
-- `oficina-lab-domain-messaging-<servico>-producer`, com `sns:GetTopicAttributes` e `sns:Publish` apenas nos tópicos produzidos pelo serviço;
-- `oficina-lab-domain-messaging-<servico>-consumer`, com ações mínimas de consumo apenas nas filas do serviço.
+- `oficina-lab-domain-messaging-<servico>-producer-<hash-12>`, com `sns:GetTopicAttributes` e `sns:Publish` apenas nos tópicos produzidos pelo serviço;
+- `oficina-lab-domain-messaging-<servico>-consumer-<hash-12>`, com ações mínimas de consumo apenas nas filas do serviço.
 
 `sns:GetTopicAttributes` permite que cada microsserviço valide, durante a inicialização em runtime protegido, que todos os seus tópicos existem e estão acessíveis sem publicar eventos sintéticos. A política consumidora já inclui `sqs:GetQueueUrl`, usado da mesma forma para validar as filas canônicas antes de iniciar o worker.
 
 Essas políticas são criadas para anexação posterior às roles dos workloads Kubernetes. O módulo não cria roles de serviço nem altera service accounts.
 
-Por compatibilidade com o VocLabs, as IAM managed policies são criadas sem tags. A role do laboratório permite criar policies, mas pode negar `iam:TagPolicy`; os demais recursos de SNS, SQS e DynamoDB permanecem tagueados pelo provider padrão.
+Por compatibilidade com o VocLabs, as IAM managed policies são criadas sem tags e usam um sufixo determinístico com os 12 primeiros caracteres do SHA-256 da descrição e do documento da policy. A criação inicial é permitida, mas a role do laboratório pode negar `iam:TagPolicy` e `iam:CreatePolicyVersion`. Quando o conteúdo muda, o Terraform cria a policy sucessora antes de remover a anterior, evitando atualização por versão.
+
+O ARN físico muda junto com o conteúdo. Anexações futuras às roles dos workloads devem ser gerenciadas pelo Terraform e consumir sempre `execution_dynamodb_runtime_policy_arn`, `domain_messaging_producer_policy_arns` e `domain_messaging_consumer_policy_arns`; não é permitido fixar em código um ARN com hash.
 
 ## Outputs
 

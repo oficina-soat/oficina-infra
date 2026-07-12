@@ -160,13 +160,30 @@ data "aws_iam_policy_document" "producer" {
   }
 }
 
+locals {
+  producer_policy_descriptions = {
+    for service in keys(local.producer_policy_services) :
+    service => "Permite ao ${service} publicar eventos de dominio nos topicos canonicos."
+  }
+  producer_policy_hashes = {
+    for service in keys(local.producer_policy_services) : service => substr(sha256(jsonencode({
+      description = local.producer_policy_descriptions[service]
+      policy      = jsondecode(data.aws_iam_policy_document.producer[service].json)
+    })), 0, 12)
+  }
+}
+
 resource "aws_iam_policy" "producer" {
   for_each = local.producer_policy_services
   provider = aws.untagged
 
-  name        = "${var.policy_name_prefix}-${each.key}-producer"
-  description = "Permite ao ${each.key} publicar eventos de dominio nos topicos canonicos."
+  name        = "${var.policy_name_prefix}-${each.key}-producer-${local.producer_policy_hashes[each.key]}"
+  description = local.producer_policy_descriptions[each.key]
   policy      = data.aws_iam_policy_document.producer[each.key].json
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 data "aws_iam_policy_document" "consumer" {
@@ -189,11 +206,28 @@ data "aws_iam_policy_document" "consumer" {
   }
 }
 
+locals {
+  consumer_policy_descriptions = {
+    for service in keys(local.consumer_policy_services) :
+    service => "Permite ao ${service} consumir eventos de dominio das filas canonicas."
+  }
+  consumer_policy_hashes = {
+    for service in keys(local.consumer_policy_services) : service => substr(sha256(jsonencode({
+      description = local.consumer_policy_descriptions[service]
+      policy      = jsondecode(data.aws_iam_policy_document.consumer[service].json)
+    })), 0, 12)
+  }
+}
+
 resource "aws_iam_policy" "consumer" {
   for_each = local.consumer_policy_services
   provider = aws.untagged
 
-  name        = "${var.policy_name_prefix}-${each.key}-consumer"
-  description = "Permite ao ${each.key} consumir eventos de dominio das filas canonicas."
+  name        = "${var.policy_name_prefix}-${each.key}-consumer-${local.consumer_policy_hashes[each.key]}"
+  description = local.consumer_policy_descriptions[each.key]
   policy      = data.aws_iam_policy_document.consumer[each.key].json
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
