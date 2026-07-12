@@ -58,8 +58,10 @@ Para cada evento:
 
 As políticas IAM de mensageria são separadas por serviço:
 
-- `oficina-lab-domain-messaging-<servico>-producer`, com `sns:Publish` apenas nos tópicos produzidos pelo serviço;
+- `oficina-lab-domain-messaging-<servico>-producer`, com `sns:GetTopicAttributes` e `sns:Publish` apenas nos tópicos produzidos pelo serviço;
 - `oficina-lab-domain-messaging-<servico>-consumer`, com ações mínimas de consumo apenas nas filas do serviço.
+
+`sns:GetTopicAttributes` permite que cada microsserviço valide, durante a inicialização em runtime protegido, que todos os seus tópicos existem e estão acessíveis sem publicar eventos sintéticos. A política consumidora já inclui `sqs:GetQueueUrl`, usado da mesma forma para validar as filas canônicas antes de iniciar o worker.
 
 Essas políticas são criadas para anexação posterior às roles dos workloads Kubernetes. O módulo não cria roles de serviço nem altera service accounts.
 

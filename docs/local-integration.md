@@ -43,6 +43,8 @@ O profile `services` constrói e sobe os três microsserviços em portas distint
 docker compose -f compose.local.yml --profile services up -d --build
 ```
 
+Os containers usam explicitamente o profile Quarkus `dev` e `DEPLOYMENT_ENVIRONMENT=local`. Esse par identifica uma execução local deliberada, permite endpoints locais e evita confundir telemetria com o ambiente `lab`. PostgreSQL e DynamoDB continuam obrigatórios; não há fallback automático para stores em memória. A mensageria fica habilitada contra o LocalStack preparado pelo bootstrap.
+
 Endpoints principais:
 
 | Serviço | URL |
@@ -90,6 +92,12 @@ docker compose -f compose.local.yml --profile services up -d --build
 Também é possível manter apenas as dependências no Compose e executar cada serviço via Maven:
 
 ```bash
+export OFICINA_MESSAGING_ENABLED=true
+export OFICINA_MESSAGING_ENDPOINT_OVERRIDE=http://localhost:4566
+export AWS_ACCOUNT_ID=000000000000
+```
+
+```bash
 cd ../oficina-os-service
 ./mvnw quarkus:dev -Ppostgresql -Dquarkus.http.port=8081
 
@@ -113,16 +121,11 @@ O bootstrap cria tópicos, filas de consumidores e DLQs conforme o contrato de m
 
 Nos logs, o script mostra o nome lógico do contrato e o nome físico local. Como SNS/SQS aceitam apenas um subconjunto de caracteres no nome do recurso, o ambiente local troca `.` por `-` ao criar tópicos e filas. As assinaturas usam `RawMessageDelivery=true`, mantendo no SQS o envelope de domínio publicado pelo produtor, sem envelope adicional do SNS. A materialização definitiva em AWS/Terraform fica nos módulos de infraestrutura da Fase 4.
 
-## Limitações atuais
+## Proteção contra configuração inválida
 
-O ambiente já prepara dependências para integração, mas o fluxo distribuído completo ainda depende da implementação dos publishers, consumers, Outbox e Saga nos microsserviços.
+Nos profiles `prod` e `lab`, ou quando `DEPLOYMENT_ENVIRONMENT=lab`, cada microsserviço valida banco, tabelas DynamoDB, tópicos SNS, filas SQS e configuração de autenticação antes de concluir a inicialização. Endpoints locais e stores em memória são rejeitados nesses runtimes.
 
-Até essa implementação estar completa, use o ambiente para:
-
-- validar inicialização dos serviços;
-- testar APIs isoladas;
-- validar migrations e seeds locais;
-- preparar os recursos de mensageria que serão usados pelos próximos incrementos.
+O Compose usa o profile `dev` para permitir deliberadamente PostgreSQL, DynamoDB Local e LocalStack. Não remova `QUARKUS_PROFILE=dev` nem reutilize essa configuração no ambiente compartilhado.
 
 ## Encerrar ambiente
 
