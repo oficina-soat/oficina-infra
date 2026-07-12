@@ -54,5 +54,7 @@ create_execution_dynamodb             = true
 execution_dynamodb_table_prefix       = "oficina-execution-lab"
 create_domain_messaging               = true
 domain_messaging_raw_message_delivery = true
+attach_auth_sync_lambda_consumer_policy = false
+auth_sync_lambda_role_name               = "LabRole"
 
 create_terraform_shared_data_bucket = false

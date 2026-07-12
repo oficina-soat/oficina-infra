@@ -27,6 +27,8 @@ Flags principais:
 | `create_domain_messaging` | `true` | Cria tópicos SNS, filas SQS, DLQs, assinaturas e políticas IAM de mensageria. |
 | `create_runtime_iam_policies` | `true` | Cria políticas IAM gerenciadas para anexação posterior às roles dos workloads. |
 | `domain_messaging_raw_message_delivery` | `true` | Entrega no SQS o envelope de domínio publicado no SNS, sem envelope adicional do SNS. |
+| `attach_auth_sync_lambda_consumer_policy` | `false` | Anexa opcionalmente a policy SQS do consumidor serverless à role da `oficina-auth-sync-lambda`; permanece desabilitado no VocLabs. |
+| `auth_sync_lambda_role_name` | `LabRole` | Role de execução compartilhada com o deploy da Lambda no ambiente de laboratório. |
 
 ## Tabelas DynamoDB
 
@@ -63,7 +65,15 @@ As políticas IAM de mensageria são separadas por serviço:
 
 `sns:GetTopicAttributes` permite que cada microsserviço valide, durante a inicialização em runtime protegido, que todos os seus tópicos existem e estão acessíveis sem publicar eventos sintéticos. A política consumidora já inclui `sqs:GetQueueUrl`, usado da mesma forma para validar as filas canônicas antes de iniciar o worker.
 
-Essas políticas são criadas para anexação posterior às roles dos workloads Kubernetes. O módulo não cria roles de serviço nem altera service accounts.
+Os eventos `usuarioAdicionado`, `usuarioAtualizado` e `usuarioExcluido` criam três tópicos, três filas do consumidor `oficina-auth-sync-lambda` e três DLQs. As filas físicas são:
+
+```text
+oficina-os-usuario-adicionado-oficina-auth-sync-lambda
+oficina-os-usuario-atualizado-oficina-auth-sync-lambda
+oficina-os-usuario-excluido-oficina-auth-sync-lambda
+```
+
+O Terraform produz a policy consumidora content-addressed e pode anexá-la à role informada por `auth_sync_lambda_role_name` quando `attach_auth_sync_lambda_consumer_policy=true`. No VocLabs, o attachment permanece desabilitado porque a identidade de deploy recebe `implicitDeny` para `iam:AttachRolePolicy`, enquanto a `LabRole` preexistente já permite as ações SQS necessárias em `us-east-1`. A função e seus event source mappings continuam sendo publicados pelo repositório `oficina-auth-lambda`, depois que esta infraestrutura existir. As demais policies permanecem disponíveis pelos outputs para anexação às roles dos workloads Kubernetes; o módulo não cria roles de serviço nem altera service accounts.
 
 Por compatibilidade com o VocLabs, as IAM managed policies são criadas sem tags e usam um sufixo determinístico com os 12 primeiros caracteres do SHA-256 da descrição e do documento da policy. A criação inicial é permitida, mas a role do laboratório pode negar `iam:TagPolicy` e `iam:CreatePolicyVersion`. Quando o conteúdo muda, o Terraform cria a policy sucessora antes de remover a anterior, evitando atualização por versão.
 

@@ -108,6 +108,7 @@ destroy_lambda_function_names() {
 
   printf '%s\n' \
     "${AUTH_LAMBDA_FUNCTION_NAME:-oficina-auth-lambda-lab}" \
+    "${AUTH_SYNC_LAMBDA_FUNCTION_NAME:-oficina-auth-sync-lambda-lab}" \
     "${NOTIFICACAO_LAMBDA_FUNCTION_NAME:-oficina-notificacao-lambda-lab}" |
     sed '/^$/d'
 }
@@ -429,6 +430,9 @@ lambda_security_group_name_for_function() {
   case "${function_name}" in
     "${AUTH_LAMBDA_FUNCTION_NAME:-oficina-auth-lambda-lab}")
       printf '%s\n' "${AUTH_LAMBDA_SECURITY_GROUP_NAME:-${function_name}-sg}"
+      ;;
+    "${AUTH_SYNC_LAMBDA_FUNCTION_NAME:-oficina-auth-sync-lambda-lab}")
+      printf '%s\n' "${AUTH_SYNC_LAMBDA_SECURITY_GROUP_NAME:-${function_name}-sg}"
       ;;
     "${NOTIFICACAO_LAMBDA_FUNCTION_NAME:-oficina-notificacao-lambda-lab}")
       printf '%s\n' "${NOTIFICACAO_LAMBDA_SECURITY_GROUP_NAME:-${EKS_CLUSTER_NAME}-notificacao-lambda}"

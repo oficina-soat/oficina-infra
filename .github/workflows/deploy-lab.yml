@@ -84,6 +84,8 @@ jobs:
       TF_VAR_execution_dynamodb_kms_key_arn: ${{ vars.EXECUTION_DYNAMODB_KMS_KEY_ARN }}
       TF_VAR_create_domain_messaging: ${{ vars.CREATE_DOMAIN_MESSAGING || 'true' }}
       TF_VAR_create_runtime_iam_policies: ${{ vars.CREATE_RUNTIME_IAM_POLICIES || 'true' }}
+      TF_VAR_attach_auth_sync_lambda_consumer_policy: ${{ vars.ATTACH_AUTH_SYNC_LAMBDA_CONSUMER_POLICY || 'false' }}
+      TF_VAR_auth_sync_lambda_role_name: ${{ vars.AUTH_SYNC_LAMBDA_ROLE_NAME || vars.AUTH_LAMBDA_ROLE_NAME || vars.LAMBDA_ROLE_NAME || 'LabRole' }}
       TF_VAR_domain_messaging_raw_message_delivery: ${{ vars.DOMAIN_MESSAGING_RAW_MESSAGE_DELIVERY || 'true' }}
       TF_VAR_domain_messaging_sns_kms_master_key_id: ${{ vars.DOMAIN_MESSAGING_SNS_KMS_MASTER_KEY_ID }}
       BOOTSTRAP_SERVICE_DATABASES: ${{ vars.BOOTSTRAP_SERVICE_DATABASES || 'true' }}

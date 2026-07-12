@@ -388,6 +388,23 @@ variable "create_runtime_iam_policies" {
   default     = true
 }
 
+variable "attach_auth_sync_lambda_consumer_policy" {
+  type        = bool
+  description = "Quando true, anexa a policy SQS do oficina-auth-sync-lambda a role de execucao informada. Permanece false no VocLabs, onde o attachment e negado e a LabRole ja permite SQS em us-east-1."
+  default     = false
+}
+
+variable "auth_sync_lambda_role_name" {
+  type        = string
+  description = "Nome da role IAM usada pela oficina-auth-sync-lambda para consumir as filas de usuarios."
+  default     = "LabRole"
+
+  validation {
+    condition     = trimspace(var.auth_sync_lambda_role_name) != ""
+    error_message = "auth_sync_lambda_role_name nao pode ser vazio."
+  }
+}
+
 variable "domain_messaging_max_receive_count" {
   type        = number
   description = "Quantidade maxima de recebimentos SQS antes de enviar para DLQ."
