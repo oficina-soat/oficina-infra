@@ -82,13 +82,13 @@ resource "aws_launch_template" "node_group" {
 }
 
 resource "aws_eks_node_group" "this" {
-  cluster_name    = aws_eks_cluster.this.name
-  node_group_name = "${var.cluster_name}-ng"
-  node_role_arn   = var.node_role_arn
-  subnet_ids      = var.subnet_ids
-  capacity_type   = var.node_capacity_type
-  instance_types  = [var.instance_type]
-  ami_type        = var.node_ami_type
+  cluster_name           = aws_eks_cluster.this.name
+  node_group_name_prefix = "${var.cluster_name}-ng-"
+  node_role_arn          = var.node_role_arn
+  subnet_ids             = var.subnet_ids
+  capacity_type          = var.node_capacity_type
+  instance_types         = [var.instance_type]
+  ami_type               = var.node_ami_type
 
   launch_template {
     id      = aws_launch_template.node_group.id
@@ -103,5 +103,9 @@ resource "aws_eks_node_group" "this" {
 
   tags = {
     Name = "${var.cluster_name}-ng"
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }

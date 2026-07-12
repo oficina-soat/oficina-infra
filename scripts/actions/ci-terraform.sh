@@ -26,6 +26,14 @@ TF_STATE_KEY="${TF_STATE_KEY:-oficina/lab/infra/terraform.tfstate}"
 TF_STATE_REGION="${TF_STATE_REGION:-${AWS_REGION}}"
 TF_STATE_DYNAMODB_TABLE="${TF_STATE_DYNAMODB_TABLE:-}"
 BOOTSTRAP_TF_STATE_BUCKET="${BOOTSTRAP_TF_STATE_BUCKET:-true}"
+TERRAFORM_OVERRIDE_VAR_FILE=""
+declare -a TERRAFORM_OVERRIDE_VAR_ARGS=()
+
+cleanup_terraform_override_var_file() {
+  rm -f "${TERRAFORM_OVERRIDE_VAR_FILE:-}"
+}
+
+trap cleanup_terraform_override_var_file EXIT
 
 usage() {
   cat <<EOF
@@ -54,6 +62,25 @@ EOF
 
 aws_caller_account_id() {
   aws sts get-caller-identity --query 'Account' --output text
+}
+
+prepare_terraform_override_var_file() {
+  case "${TERRAFORM_ACTION}" in
+    plan | apply | destroy) ;;
+    *) return ;;
+  esac
+
+  require_cmd jq
+
+  TERRAFORM_OVERRIDE_VAR_FILE="$(mktemp --suffix=.tfvars.json)"
+  chmod 600 "${TERRAFORM_OVERRIDE_VAR_FILE}"
+  jq -n '
+    env
+    | with_entries(select(.key | startswith("TF_VAR_")))
+    | with_entries(.key |= ltrimstr("TF_VAR_"))
+    | with_entries(.value |= (. as $value | try fromjson catch $value))
+  ' >"${TERRAFORM_OVERRIDE_VAR_FILE}"
+  TERRAFORM_OVERRIDE_VAR_ARGS=("-var-file=${TERRAFORM_OVERRIDE_VAR_FILE}")
 }
 
 is_truthy_value() {
@@ -121,6 +148,15 @@ resolve_role_arn_by_name_fragment() {
     --output text 2>/dev/null
 }
 
+resolve_role_arn_by_exact_name() {
+  local role_name="$1"
+
+  aws iam get-role \
+    --role-name "${role_name}" \
+    --query 'Role.Arn' \
+    --output text 2>/dev/null || true
+}
+
 resolve_current_principal_arn() {
   local caller_arn assumed_role_name account_id
 
@@ -152,7 +188,7 @@ validate_role_account_match() {
 }
 
 set_eks_role_defaults() {
-  local current_account cluster_role_arn node_role_arn access_principal_arn
+  local current_account current_principal_arn cluster_role_arn node_role_arn access_principal_arn
 
   if ! is_truthy_value "${TF_VAR_create_eks}"; then
     return
@@ -161,6 +197,7 @@ set_eks_role_defaults() {
   require_cmd aws
 
   current_account="$(aws_caller_account_id)"
+  current_principal_arn="$(resolve_current_principal_arn)"
   cluster_role_arn="${TF_VAR_eks_cluster_role_arn:-}"
   node_role_arn="${TF_VAR_eks_node_role_arn:-}"
   access_principal_arn="${TF_VAR_eks_access_principal_arn:-}"
@@ -177,7 +214,17 @@ set_eks_role_defaults() {
   fi
 
   if [[ -z "${node_role_arn}" ]]; then
-    node_role_arn="$(resolve_role_arn_by_name_fragment 'LabEksNodeRole')"
+    if [[ "${current_principal_arn}" =~ ^arn:aws:iam::[0-9]{12}:role/voclabs$ ]]; then
+      node_role_arn="$(resolve_role_arn_by_exact_name 'LabRole')"
+
+      if [[ -z "${node_role_arn}" || "${node_role_arn}" == "None" ]]; then
+        fail "Sessao VocLabs detectada, mas a LabRole nao foi encontrada. Configure EKS_NODE_ROLE_ARN explicitamente com uma role que permita EKS, SNS, SQS e DynamoDB."
+      fi
+
+      log "VocLabs detectado; usando LabRole nos nodes EKS para disponibilizar SNS, SQS e DynamoDB sem attachments IAM proibidos: ${node_role_arn}"
+    else
+      node_role_arn="$(resolve_role_arn_by_name_fragment 'LabEksNodeRole')"
+    fi
 
     if [[ -z "${node_role_arn}" || "${node_role_arn}" == "None" ]]; then
       fail "Nao foi possivel descobrir automaticamente a role dos nodes EKS. Configure EKS_NODE_ROLE_ARN nas vars do GitHub."
@@ -188,7 +235,7 @@ set_eks_role_defaults() {
   fi
 
   if [[ -z "${access_principal_arn}" ]]; then
-    access_principal_arn="$(resolve_current_principal_arn)"
+    access_principal_arn="${current_principal_arn}"
     export TF_VAR_eks_access_principal_arn="${access_principal_arn}"
     log "Usando principal de acesso ao cluster derivado das credenciais atuais: ${access_principal_arn}"
   fi
@@ -750,6 +797,7 @@ if [[ "${TERRAFORM_ACTION}" != "validate" ]]; then
   set_eks_role_defaults
 fi
 
+prepare_terraform_override_var_file
 terraform_init
 terraform -chdir="${TERRAFORM_DIR}" validate
 
@@ -757,15 +805,15 @@ case "${TERRAFORM_ACTION}" in
   validate) ;;
   init) ;;
   plan)
-    terraform -chdir="${TERRAFORM_DIR}" plan -input=false
+    terraform -chdir="${TERRAFORM_DIR}" plan -input=false "${TERRAFORM_OVERRIDE_VAR_ARGS[@]}"
     ;;
   apply)
-    terraform -chdir="${TERRAFORM_DIR}" apply -auto-approve -input=false
+    terraform -chdir="${TERRAFORM_DIR}" apply -auto-approve -input=false "${TERRAFORM_OVERRIDE_VAR_ARGS[@]}"
     ;;
   destroy)
     delete_ecr_repository_images_for_destroy
     delete_external_lambdas_for_destroy
     disable_rds_deletion_protection_for_destroy
-    terraform -chdir="${TERRAFORM_DIR}" destroy -auto-approve -input=false
+    terraform -chdir="${TERRAFORM_DIR}" destroy -auto-approve -input=false "${TERRAFORM_OVERRIDE_VAR_ARGS[@]}"
     ;;
 esac

@@ -26,6 +26,8 @@ create_eks           = true
 cluster_name         = "eks-lab"
 kubernetes_version   = "1.35"
 eks_cluster_role_arn = "arn:aws:iam::<aws-account-id>:role/<lab-eks-cluster-role>"
+# No VocLabs, use arn:aws:iam::<aws-account-id>:role/LabRole para disponibilizar
+# SNS, SQS e DynamoDB aos pods sem attachments IAM proibidos.
 eks_node_role_arn    = "arn:aws:iam::<aws-account-id>:role/<lab-eks-node-role>"
 
 create_ecr_repositories = true

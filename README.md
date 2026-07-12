@@ -129,7 +129,7 @@ Variáveis mínimas esperadas:
 - `AWS_REGION=us-east-1`
 - `EKS_CLUSTER_NAME=eks-lab`
 - `CREATE_EKS=true`, padrão do workflow para manter o lab alinhado ao deploy Kubernetes
-- `EKS_CLUSTER_ROLE_ARN` e `EKS_NODE_ROLE_ARN`, quando `CREATE_EKS=true`; no VocLabs, [scripts/actions/ci-terraform.sh](scripts/actions/ci-terraform.sh) tenta descobrir automaticamente roles com `LabEksClusterRole` e `LabEksNodeRole` no nome quando essas variáveis não forem informadas
+- `EKS_CLUSTER_ROLE_ARN` e `EKS_NODE_ROLE_ARN`, quando `CREATE_EKS=true`; no VocLabs, [scripts/actions/ci-terraform.sh](scripts/actions/ci-terraform.sh) descobre `LabEksClusterRole` para o control plane e usa a `LabRole` preexistente nos nodes quando as variáveis não forem informadas. A `LabRole` é necessária no laboratório porque permite SNS, SQS e DynamoDB, enquanto a identidade `voclabs` não pode anexar essas policies à `LabEksNodeRole`. Fora do VocLabs, o fallback da role dos nodes continua procurando `LabEksNodeRole`
 - `RDS_DELETION_PROTECTION=false`, padrão do workflow para permitir destroy completo do RDS de lab
 - `SKIP_FINAL_SNAPSHOT=true`, padrão do workflow para destruir o RDS de lab sem exigir `FINAL_SNAPSHOT_IDENTIFIER`
 - `DELETE_AUTOMATED_BACKUPS=true`, padrão do workflow para remover backups automáticos do RDS no destroy do lab
@@ -151,6 +151,10 @@ Variáveis mínimas esperadas:
 - `ATTACH_AUTH_SYNC_LAMBDA_CONSUMER_POLICY=false` no VocLabs, pois a identidade do laboratório não pode alterar attachments e a `LabRole` já permite consumo SQS em `us-east-1`; habilite somente em contas cuja role exija a policy gerenciada e o executor possua `iam:AttachRolePolicy`
 - `AUTH_SYNC_LAMBDA_ROLE_NAME=LabRole`, nome da role usada no deploy da `oficina-auth-sync-lambda`
 - `INSTALL_NEW_RELIC_OTEL_COLLECTOR=auto`, `NEW_RELIC_LICENSE_KEY` e `NEW_RELIC_OTLP_ENDPOINT`, quando o New Relic OpenTelemetry Collector deve ser instalado no cluster; use `INSTALL_NEW_RELIC_OTEL_COLLECTOR=false` para desabilitar explicitamente a etapa
+
+Alterar a role de um managed node group exige substituí-lo. O módulo EKS usa nome com prefixo e `create_before_destroy`: o novo node group deve ficar ativo antes da remoção do anterior, preservando os pods disponíveis durante a troca. A `LabRole` como role dos nodes é uma exceção operacional exclusiva do VocLabs; ambientes permanentes devem usar identidade por workload e policies de menor privilégio.
+
+O script `ci-terraform.sh` materializa os valores `TF_VAR_*` em um `-var-file` temporário, usado somente por `plan`, `apply` ou `destroy` e removido ao encerrar. Assim, valores definidos pelo workflow ou pelo operador têm precedência sobre um eventual `terraform.tfvars` local e não podem ser silenciosamente anulados por esse arquivo.
 
 Integração Mercado Pago do `oficina-billing-service`:
 
