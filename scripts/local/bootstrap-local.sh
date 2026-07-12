@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+# shellcheck source=scripts/lib/common.sh
 source "${SCRIPT_DIR}/../lib/common.sh"
 
 COMPOSE_FILE="${COMPOSE_FILE:-${REPO_ROOT}/compose.local.yml}"
@@ -151,6 +152,9 @@ bootstrap_messaging() {
   create_messaging_route estoqueBaixado oficina.execution.estoque-baixado oficina-execution-service oficina-billing-service
   create_messaging_route sagaCompensada oficina.saga.saga-compensada oficina-os-service oficina-billing-service oficina-execution-service
   create_messaging_route sagaFinalizadaComSucesso oficina.saga.saga-finalizada-com-sucesso oficina-os-service oficina-billing-service oficina-execution-service
+  create_messaging_route usuarioAdicionado oficina.os.usuario-adicionado oficina-os-service oficina-auth-sync-lambda
+  create_messaging_route usuarioAtualizado oficina.os.usuario-atualizado oficina-os-service oficina-auth-sync-lambda
+  create_messaging_route usuarioExcluido oficina.os.usuario-excluido oficina-os-service oficina-auth-sync-lambda
 }
 
 main() {

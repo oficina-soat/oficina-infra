@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TERRAFORM_DIR="${TERRAFORM_DIR:-${REPO_ROOT}/terraform/environments/lab}"
 
+# shellcheck source=scripts/lib/common.sh
 source "${SCRIPT_DIR}/../lib/common.sh"
 
 AWS_REGION="${AWS_REGION:-us-east-1}"
@@ -271,7 +272,7 @@ fi
 
 require_cmd kubectl
 
-if [[ -z "${MASTER_SECRET_ARN}" && ( -z "${DB_HOST}" || -z "${DB_PORT}" || -z "${MASTER_DB_USER}" || -z "${MASTER_DB_PASSWORD}" ) ]]; then
+if [[ -z "${MASTER_SECRET_ARN}" && (-z "${DB_HOST}" || -z "${DB_PORT}" || -z "${MASTER_DB_USER}" || -z "${MASTER_DB_PASSWORD}") ]]; then
   MASTER_SECRET_ARN="$(read_tf_output db_master_user_secret_arn)"
 fi
 

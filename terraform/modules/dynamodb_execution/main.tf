@@ -230,11 +230,23 @@ data "aws_iam_policy_document" "runtime_access" {
   }
 }
 
+locals {
+  runtime_policy_description = "Acesso runtime do oficina-execution-service as tabelas DynamoDB da Fase 4."
+  runtime_policy_hash = substr(sha256(jsonencode({
+    description = local.runtime_policy_description
+    policy      = jsondecode(data.aws_iam_policy_document.runtime_access.json)
+  })), 0, 12)
+}
+
 resource "aws_iam_policy" "runtime_access" {
   count    = var.create_runtime_iam_policy ? 1 : 0
   provider = aws.untagged
 
-  name        = "${var.table_prefix}-runtime-dynamodb"
-  description = "Acesso runtime do oficina-execution-service as tabelas DynamoDB da Fase 4."
+  name        = "${var.table_prefix}-runtime-dynamodb-${local.runtime_policy_hash}"
+  description = local.runtime_policy_description
   policy      = data.aws_iam_policy_document.runtime_access.json
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }

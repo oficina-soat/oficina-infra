@@ -27,6 +27,8 @@ Flags principais:
 | `create_domain_messaging` | `true` | Cria tópicos SNS, filas SQS, DLQs, assinaturas e políticas IAM de mensageria. |
 | `create_runtime_iam_policies` | `true` | Cria políticas IAM gerenciadas para anexação posterior às roles dos workloads. |
 | `domain_messaging_raw_message_delivery` | `true` | Entrega no SQS o envelope de domínio publicado no SNS, sem envelope adicional do SNS. |
+| `attach_auth_sync_lambda_consumer_policy` | `false` | Anexa opcionalmente a policy SQS do consumidor serverless à role da `oficina-auth-sync-lambda`; permanece desabilitado no VocLabs. |
+| `auth_sync_lambda_role_name` | `LabRole` | Role de execução compartilhada com o deploy da Lambda no ambiente de laboratório. |
 
 ## Tabelas DynamoDB
 
@@ -38,7 +40,7 @@ Flags principais:
 | `oficina-execution-lab-outbox` | `NEW_AND_OLD_IMAGES` | `expiresAt` |
 | `oficina-execution-lab-idempotencia` | Desabilitado | `expiresAt` |
 
-As tabelas usam `PAY_PER_REQUEST` e criptografia server-side. O módulo cria a política IAM `oficina-execution-lab-runtime-dynamodb`, que deve ser anexada somente ao runtime do `oficina-execution-service`.
+As tabelas usam `PAY_PER_REQUEST` e criptografia server-side. O módulo cria a política IAM `oficina-execution-lab-runtime-dynamodb-<hash-12>`, que deve ser anexada somente ao runtime do `oficina-execution-service`.
 
 ## Mensageria SNS/SQS
 
@@ -58,14 +60,26 @@ Para cada evento:
 
 As políticas IAM de mensageria são separadas por serviço:
 
-- `oficina-lab-domain-messaging-<servico>-producer`, com `sns:GetTopicAttributes` e `sns:Publish` apenas nos tópicos produzidos pelo serviço;
-- `oficina-lab-domain-messaging-<servico>-consumer`, com ações mínimas de consumo apenas nas filas do serviço.
+- `oficina-lab-domain-messaging-<servico>-producer-<hash-12>`, com `sns:GetTopicAttributes` e `sns:Publish` apenas nos tópicos produzidos pelo serviço;
+- `oficina-lab-domain-messaging-<servico>-consumer-<hash-12>`, com ações mínimas de consumo apenas nas filas do serviço.
 
 `sns:GetTopicAttributes` permite que cada microsserviço valide, durante a inicialização em runtime protegido, que todos os seus tópicos existem e estão acessíveis sem publicar eventos sintéticos. A política consumidora já inclui `sqs:GetQueueUrl`, usado da mesma forma para validar as filas canônicas antes de iniciar o worker.
 
-Essas políticas são criadas para anexação posterior às roles dos workloads Kubernetes. O módulo não cria roles de serviço nem altera service accounts.
+Os eventos `usuarioAdicionado`, `usuarioAtualizado` e `usuarioExcluido` criam três tópicos, três filas do consumidor `oficina-auth-sync-lambda` e três DLQs. As filas físicas são:
 
-Por compatibilidade com o VocLabs, as IAM managed policies são criadas sem tags. A role do laboratório permite criar policies, mas pode negar `iam:TagPolicy`; os demais recursos de SNS, SQS e DynamoDB permanecem tagueados pelo provider padrão.
+```text
+oficina-os-usuario-adicionado-oficina-auth-sync-lambda
+oficina-os-usuario-atualizado-oficina-auth-sync-lambda
+oficina-os-usuario-excluido-oficina-auth-sync-lambda
+```
+
+O Terraform produz a policy consumidora content-addressed e pode anexá-la à role informada por `auth_sync_lambda_role_name` quando `attach_auth_sync_lambda_consumer_policy=true`. No VocLabs, o attachment permanece desabilitado porque a identidade de deploy recebe `implicitDeny` para `iam:AttachRolePolicy`, enquanto a `LabRole` preexistente já permite as ações SQS necessárias em `us-east-1`. A função e seus event source mappings continuam sendo publicados pelo repositório `oficina-auth-lambda`, depois que esta infraestrutura existir.
+
+Os pods dos microsserviços também precisam de SNS, SQS e DynamoDB. Como as ServiceAccounts do laboratório não possuem IRSA ou EKS Pod Identity e o `voclabs` não pode alterar a `LabEksNodeRole`, [o script de Terraform](../scripts/actions/ci-terraform.sh) usa a `LabRole` como `EKS_NODE_ROLE_ARN` quando detecta uma sessão `voclabs` sem override explícito. O managed node group usa `create_before_destroy` para trocar a role sem remover o node antigo antes de o sucessor ficar pronto. Essa exceção é restrita ao laboratório; em contas com governança IAM completa, as policies disponíveis nos outputs devem ser associadas por workload com menor privilégio.
+
+Por compatibilidade com o VocLabs, as IAM managed policies são criadas sem tags e usam um sufixo determinístico com os 12 primeiros caracteres do SHA-256 da descrição e do documento da policy. A criação inicial é permitida, mas a role do laboratório pode negar `iam:TagPolicy` e `iam:CreatePolicyVersion`. Quando o conteúdo muda, o Terraform cria a policy sucessora antes de remover a anterior, evitando atualização por versão.
+
+O ARN físico muda junto com o conteúdo. Anexações futuras às roles dos workloads devem ser gerenciadas pelo Terraform e consumir sempre `execution_dynamodb_runtime_policy_arn`, `domain_messaging_producer_policy_arns` e `domain_messaging_consumer_policy_arns`; não é permitido fixar em código um ARN com hash.
 
 ## Outputs
 

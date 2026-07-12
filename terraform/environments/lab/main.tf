@@ -48,6 +48,11 @@ locals {
     oficina-execution-service = substr("${var.cluster_name}-execution-service", 0, 32)
   }
   microservice_public_route_services = {
+    "POST /api/v1/usuarios"                                     = "oficina-os-service"
+    "GET /api/v1/usuarios"                                      = "oficina-os-service"
+    "GET /api/v1/usuarios/{usuarioId}"                          = "oficina-os-service"
+    "PUT /api/v1/usuarios/{usuarioId}"                          = "oficina-os-service"
+    "DELETE /api/v1/usuarios/{usuarioId}"                       = "oficina-os-service"
     "POST /api/v1/clientes"                                     = "oficina-os-service"
     "GET /api/v1/clientes"                                      = "oficina-os-service"
     "GET /api/v1/clientes/{clienteId}"                          = "oficina-os-service"
@@ -234,6 +239,24 @@ locals {
       topic      = "oficina.saga.saga-finalizada-com-sucesso"
       producer   = "oficina-os-service"
       consumers  = ["oficina-billing-service", "oficina-execution-service"]
+    }
+    usuarioAdicionado = {
+      event_type = "usuarioAdicionado"
+      topic      = "oficina.os.usuario-adicionado"
+      producer   = "oficina-os-service"
+      consumers  = ["oficina-auth-sync-lambda"]
+    }
+    usuarioAtualizado = {
+      event_type = "usuarioAtualizado"
+      topic      = "oficina.os.usuario-atualizado"
+      producer   = "oficina-os-service"
+      consumers  = ["oficina-auth-sync-lambda"]
+    }
+    usuarioExcluido = {
+      event_type = "usuarioExcluido"
+      topic      = "oficina.os.usuario-excluido"
+      producer   = "oficina-os-service"
+      consumers  = ["oficina-auth-sync-lambda"]
     }
   }
 }
@@ -440,6 +463,18 @@ module "domain_messaging" {
   sns_kms_master_key_id            = var.domain_messaging_sns_kms_master_key_id
   create_runtime_iam_policies      = var.create_runtime_iam_policies
   tags                             = local.default_tags
+}
+
+data "aws_iam_role" "auth_sync_lambda" {
+  count = var.create_domain_messaging && var.create_runtime_iam_policies && var.attach_auth_sync_lambda_consumer_policy ? 1 : 0
+  name  = var.auth_sync_lambda_role_name
+}
+
+resource "aws_iam_role_policy_attachment" "auth_sync_lambda_consumer" {
+  count = var.create_domain_messaging && var.create_runtime_iam_policies && var.attach_auth_sync_lambda_consumer_policy ? 1 : 0
+
+  role       = data.aws_iam_role.auth_sync_lambda[0].name
+  policy_arn = module.domain_messaging[0].consumer_policy_arns["oficina-auth-sync-lambda"]
 }
 
 module "terraform_shared_data_bucket" {
