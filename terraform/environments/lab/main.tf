@@ -48,6 +48,11 @@ locals {
     oficina-execution-service = substr("${var.cluster_name}-execution-service", 0, 32)
   }
   microservice_public_route_services = {
+    "POST /api/v1/usuarios"                                     = "oficina-os-service"
+    "GET /api/v1/usuarios"                                      = "oficina-os-service"
+    "GET /api/v1/usuarios/{usuarioId}"                          = "oficina-os-service"
+    "PUT /api/v1/usuarios/{usuarioId}"                          = "oficina-os-service"
+    "DELETE /api/v1/usuarios/{usuarioId}"                       = "oficina-os-service"
     "POST /api/v1/clientes"                                     = "oficina-os-service"
     "GET /api/v1/clientes"                                      = "oficina-os-service"
     "GET /api/v1/clientes/{clienteId}"                          = "oficina-os-service"
