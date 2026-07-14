@@ -477,6 +477,106 @@ resource "aws_iam_role_policy_attachment" "auth_sync_lambda_consumer" {
   policy_arn = module.domain_messaging[0].consumer_policy_arns["oficina-auth-sync-lambda"]
 }
 
+data "aws_iam_role" "auth_sync_lambda_runtime" {
+  count = var.create_auth_sync_lambda ? 1 : 0
+  name  = var.auth_sync_lambda_role_name
+}
+
+data "archive_file" "auth_sync_lambda_placeholder" {
+  count       = var.create_auth_sync_lambda ? 1 : 0
+  type        = "zip"
+  output_path = "${path.module}/.terraform/auth-sync-lambda-placeholder.zip"
+
+  source {
+    content  = "#!/bin/sh\necho 'Pacote nativo ainda nao publicado' >&2\nexit 1\n"
+    filename = "bootstrap"
+  }
+}
+
+resource "aws_security_group" "auth_sync_lambda" {
+  count = var.create_auth_sync_lambda ? 1 : 0
+
+  name        = "${var.auth_sync_lambda_function_name}-sg"
+  description = "Egress da Lambda de sincronizacao de usuarios"
+  vpc_id      = local.resolved_vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(local.default_tags, {
+    Name = var.auth_sync_lambda_function_name
+  })
+
+}
+
+resource "aws_vpc_security_group_ingress_rule" "rds_from_auth_sync_lambda" {
+  count = var.create_auth_sync_lambda && var.create_rds ? 1 : 0
+
+  security_group_id            = module.rds_postgres[0].security_group_id
+  referenced_security_group_id = aws_security_group.auth_sync_lambda[0].id
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  description                  = "PostgreSQL a partir da oficina-auth-sync-lambda"
+}
+
+resource "aws_lambda_function" "auth_sync" {
+  count = var.create_auth_sync_lambda ? 1 : 0
+
+  function_name    = var.auth_sync_lambda_function_name
+  description      = "Projeta usuarios do oficina-os-service no store de autenticacao"
+  filename         = data.archive_file.auth_sync_lambda_placeholder[0].output_path
+  source_code_hash = data.archive_file.auth_sync_lambda_placeholder[0].output_base64sha256
+  role             = data.aws_iam_role.auth_sync_lambda_runtime[0].arn
+  runtime          = "provided.al2023"
+  handler          = "not.used.in.provided.runtime"
+  architectures    = ["x86_64"]
+  memory_size      = var.auth_sync_lambda_memory_size
+  timeout          = var.auth_sync_lambda_timeout_seconds
+
+  vpc_config {
+    subnet_ids         = local.resolved_subnet_ids
+    security_group_ids = [aws_security_group.auth_sync_lambda[0].id]
+  }
+
+  tags = local.default_tags
+
+  lifecycle {
+    ignore_changes = [
+      filename,
+      source_code_hash,
+      environment,
+    ]
+  }
+}
+
+locals {
+  auth_sync_event_types = toset([
+    "usuarioAdicionado",
+    "usuarioAtualizado",
+    "usuarioExcluido",
+  ])
+}
+
+resource "aws_lambda_event_source_mapping" "auth_sync" {
+  for_each = var.create_auth_sync_lambda && var.create_domain_messaging ? local.auth_sync_event_types : toset([])
+
+  event_source_arn = module.domain_messaging[0].consumer_queue_arns["${each.value}:oficina-auth-sync-lambda"]
+  function_name    = aws_lambda_function.auth_sync[0].arn
+  batch_size       = 10
+  enabled          = false
+
+  function_response_types = ["ReportBatchItemFailures"]
+
+  lifecycle {
+    ignore_changes = [enabled]
+  }
+}
+
 module "terraform_shared_data_bucket" {
   count  = var.create_terraform_shared_data_bucket ? 1 : 0
   source = "../../modules/terraform_shared_data_bucket"
