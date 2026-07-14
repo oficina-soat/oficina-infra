@@ -1,0 +1,73 @@
+name: Suspend Lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_suspend:
+        description: "Digite SUSPEND para confirmar a suspensao dos componentes caros do lab"
+        required: true
+        type: string
+
+concurrency:
+  group: lab-infra
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  suspend:
+    if: inputs.confirm_suspend == 'SUSPEND'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_CLI_ARGS: -no-color
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_DEFAULT_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'eks-lab' }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'oficina/lab/infra/terraform.tfstate' }}
+      TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || 'us-east-1' }}
+      TF_STATE_DYNAMODB_TABLE: ${{ vars.TF_STATE_DYNAMODB_TABLE }}
+      BOOTSTRAP_TF_STATE_BUCKET: ${{ vars.BOOTSTRAP_TF_STATE_BUCKET || 'true' }}
+      TF_VAR_create_network_if_missing: ${{ vars.CREATE_NETWORK_IF_MISSING || 'true' }}
+      TF_VAR_vpc_id: ${{ vars.VPC_ID }}
+      TF_VAR_subnet_ids: ${{ vars.SUBNET_IDS || '[]' }}
+      TF_VAR_allowed_security_group_ids: ${{ vars.RDS_ALLOWED_SECURITY_GROUP_IDS || '[]' }}
+      TF_VAR_allowed_cidr_blocks: ${{ vars.RDS_ALLOWED_CIDR_BLOCKS || '[]' }}
+      TF_VAR_allow_rds_without_network_access: "true"
+      TF_VAR_deletion_protection: ${{ vars.RDS_DELETION_PROTECTION || 'false' }}
+      TF_VAR_skip_final_snapshot: ${{ vars.SKIP_FINAL_SNAPSHOT || 'true' }}
+      TF_VAR_delete_automated_backups: ${{ vars.DELETE_AUTOMATED_BACKUPS || 'true' }}
+      TF_VAR_final_snapshot_identifier: ${{ vars.FINAL_SNAPSHOT_IDENTIFIER }}
+      TF_VAR_create_eks: "false"
+      TF_VAR_create_terraform_shared_data_bucket: ${{ vars.CREATE_TERRAFORM_SHARED_DATA_BUCKET || 'false' }}
+      TF_VAR_create_execution_dynamodb: ${{ vars.CREATE_EXECUTION_DYNAMODB || 'true' }}
+      TF_VAR_execution_dynamodb_table_prefix: ${{ vars.EXECUTION_DYNAMODB_TABLE_PREFIX }}
+      TF_VAR_execution_dynamodb_point_in_time_recovery_enabled: ${{ vars.EXECUTION_DYNAMODB_POINT_IN_TIME_RECOVERY_ENABLED || 'false' }}
+      TF_VAR_execution_dynamodb_deletion_protection_enabled: ${{ vars.EXECUTION_DYNAMODB_DELETION_PROTECTION_ENABLED || 'false' }}
+      TF_VAR_execution_dynamodb_kms_key_arn: ${{ vars.EXECUTION_DYNAMODB_KMS_KEY_ARN }}
+      TF_VAR_create_domain_messaging: ${{ vars.CREATE_DOMAIN_MESSAGING || 'true' }}
+      TF_VAR_create_runtime_iam_policies: ${{ vars.CREATE_RUNTIME_IAM_POLICIES || 'true' }}
+      TF_VAR_attach_auth_sync_lambda_consumer_policy: ${{ vars.ATTACH_AUTH_SYNC_LAMBDA_CONSUMER_POLICY || 'false' }}
+      TF_VAR_auth_sync_lambda_role_name: ${{ vars.AUTH_SYNC_LAMBDA_ROLE_NAME || vars.AUTH_LAMBDA_ROLE_NAME || vars.LAMBDA_ROLE_NAME || 'LabRole' }}
+      TF_VAR_domain_messaging_raw_message_delivery: ${{ vars.DOMAIN_MESSAGING_RAW_MESSAGE_DELIVERY || 'true' }}
+      TF_VAR_domain_messaging_sns_kms_master_key_id: ${{ vars.DOMAIN_MESSAGING_SNS_KMS_MASTER_KEY_ID }}
+      TF_VAR_db_identifier: ${{ vars.DB_IDENTIFIER || 'oficina-postgres-lab' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+
+      - name: Suspend expensive lab resources
+        shell: bash
+        run: bash ./scripts/actions/ci-suspend.sh

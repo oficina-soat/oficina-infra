@@ -16,6 +16,7 @@ BOOTSTRAP_SERVICE_DATABASES_MODE="${BOOTSTRAP_SERVICE_DATABASES_MODE:-k8s}"
 APPLY_MICROSERVICES="${APPLY_MICROSERVICES:-true}"
 INSTALL_NEW_RELIC_OTEL_COLLECTOR="${INSTALL_NEW_RELIC_OTEL_COLLECTOR:-auto}"
 UPSERT_NEW_RELIC_SECRET="${UPSERT_NEW_RELIC_SECRET:-true}"
+START_RDS_ON_DEPLOY="${START_RDS_ON_DEPLOY:-false}"
 
 resolve_install_new_relic_otel_collector() {
   local install_mode="${INSTALL_NEW_RELIC_OTEL_COLLECTOR,,}"
@@ -49,6 +50,11 @@ require_cmd terraform
 log "Validando identidade AWS"
 aws sts get-caller-identity >/dev/null
 
+if [[ "${START_RDS_ON_DEPLOY}" == "true" ]]; then
+  log "Solicitando inicio do RDS em paralelo com a recriacao do EKS"
+  "${SCRIPT_DIR}/ci-rds-power.sh" start
+fi
+
 if [[ "${INSTALL_NEW_RELIC_OTEL_COLLECTOR,,}" == "auto" ]]; then
   if [[ "${INSTALL_NEW_RELIC_OTEL_COLLECTOR_RESOLVED}" == "true" ]]; then
     log "New Relic OpenTelemetry Collector habilitado automaticamente por NEW_RELIC_LICENSE_KEY"
@@ -63,6 +69,10 @@ fi
 
 log "Aplicando Terraform do ambiente lab"
 TERRAFORM_ACTION=apply "${SCRIPT_DIR}/ci-terraform.sh"
+
+if [[ "${START_RDS_ON_DEPLOY}" == "true" ]]; then
+  "${SCRIPT_DIR}/ci-rds-power.sh" wait-available
+fi
 
 if [[ "${BOOTSTRAP_SERVICE_DATABASES}" == "true" && "${BOOTSTRAP_SERVICE_DATABASES_MODE}" == "k8s" ]] \
   || [[ "${APPLY_K8S}" == "true" ]] \

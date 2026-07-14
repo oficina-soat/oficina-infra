@@ -5,6 +5,13 @@ on:
     branches:
       - main
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      start_rds:
+        description: "Inicia o RDS antes de retomar o deploy"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: lab-infra
@@ -121,6 +128,7 @@ jobs:
       NEW_RELIC_REGION: ${{ vars.NEW_RELIC_REGION || 'US' }}
       NEW_RELIC_OTLP_ENDPOINT: ${{ vars.NEW_RELIC_OTLP_ENDPOINT || 'https://otlp.nr-data.net' }}
       UPSERT_NEW_RELIC_SECRET: ${{ vars.UPSERT_NEW_RELIC_SECRET || 'true' }}
+      START_RDS_ON_DEPLOY: ${{ inputs.start_rds || 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6

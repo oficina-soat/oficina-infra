@@ -171,6 +171,14 @@ TF_STATE_BUCKET=<bucket-state> scripts/actions/ci-deploy.sh
 
 Quando as credenciais AWS locais apontam para a conta correta e o bucket usa o nome canônico, o comando também pode ser executado sem `TF_STATE_BUCKET`.
 
+### Suspensão e retomada do lab
+
+O workflow [Suspend Lab](.github/workflows/suspend-lab.yml) exige a confirmação `SUSPEND` e reduz o custo ocioso sem executar um destroy completo. Ele solicita a parada do RDS em paralelo com um `terraform apply` que define `create_eks=false`. Com isso, são removidos o cluster e os nodes EKS, os NLBs privados dos microsserviços, suas integrações e o VPC Link. Permanecem preservados a rede, o API Gateway e suas rotas Lambda, Lambdas externas, imagens ECR, RDS e seus dados, DynamoDB, SNS, SQS, S3 e IAM.
+
+O workflow [Resume Lab](.github/workflows/resume-lab.yml) reutiliza integralmente o [Deploy Lab](.github/workflows/deploy-lab.yml). Ele solicita o início do RDS antes do Terraform para que o banco suba em paralelo à recriação do EKS, aguarda ambos e então executa o mesmo bootstrap e deploy Kubernetes do fluxo completo. Os workflows originais de deploy e destroy continuam disponíveis e com seus gatilhos preservados.
+
+Os dois fluxos são idempotentes: suspender um lab já suspenso ou retomar um lab já ativo não solicita uma transição inválida ao RDS. Como a AWS reinicia automaticamente instâncias RDS paradas após sete dias, execute novamente o `Suspend Lab` quando o ambiente precisar continuar ocioso depois desse período.
+
 O workflow [Destroy Lab](.github/workflows/destroy-lab.yml) força `deletion_protection=false`, `skip_final_snapshot=true`, `delete_automated_backups=true` e `ecr_force_delete=true`. Antes de executar `terraform destroy`, [scripts/actions/ci-terraform.sh](scripts/actions/ci-terraform.sh) também:
 
 - remove imagens dos repositórios ECR canônicos para evitar falha de `RepositoryNotEmptyException`;

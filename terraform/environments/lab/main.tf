@@ -277,8 +277,8 @@ check "network_inputs" {
 
 check "database_access_inputs" {
   assert {
-    condition     = !var.create_rds || var.create_eks || length(var.allowed_security_group_ids) > 0 || length(var.allowed_cidr_blocks) > 0
-    error_message = "Informe allowed_security_group_ids, allowed_cidr_blocks ou habilite create_eks para permitir acesso ao RDS."
+    condition     = !var.create_rds || var.create_eks || var.allow_rds_without_network_access || length(var.allowed_security_group_ids) > 0 || length(var.allowed_cidr_blocks) > 0
+    error_message = "Informe allowed_security_group_ids, allowed_cidr_blocks, habilite create_eks ou marque explicitamente allow_rds_without_network_access durante a suspensao."
   }
 }
 
