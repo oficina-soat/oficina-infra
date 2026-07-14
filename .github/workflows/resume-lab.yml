@@ -1,0 +1,12 @@
+name: Resume Lab
+
+on:
+  workflow_dispatch:
+
+jobs:
+  resume:
+    name: Recreate expensive lab resources
+    uses: ./.github/workflows/deploy-lab.yml
+    with:
+      start_rds: true
+    secrets: inherit

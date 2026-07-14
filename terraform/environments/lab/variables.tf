@@ -82,6 +82,12 @@ variable "allowed_cidr_blocks" {
   default     = []
 }
 
+variable "allow_rds_without_network_access" {
+  type        = bool
+  description = "Permite manter o RDS sem ingress durante a suspensao do EKS. Use apenas em workflows de suspensao."
+  default     = false
+}
+
 variable "create_eks" {
   type        = bool
   description = "Quando true, cria o cluster EKS compartilhado."
