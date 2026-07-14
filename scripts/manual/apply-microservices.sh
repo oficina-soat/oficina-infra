@@ -14,6 +14,7 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 K8S_NAMESPACE="${K8S_NAMESPACE:-default}"
 DB_SSLMODE="${DB_SSLMODE:-require}"
 MICROSERVICE_NAMES="${MICROSERVICE_NAMES:-oficina-os-service oficina-billing-service oficina-execution-service}"
+MICROSERVICE_REPOSITORIES_ROOT="${MICROSERVICE_REPOSITORIES_ROOT:-$(cd "${REPO_ROOT}/.." && pwd)}"
 API_GATEWAY_NAME="${API_GATEWAY_NAME:-eks-lab-http-api}"
 OFICINA_AUTH_ISSUER="${OFICINA_AUTH_ISSUER:-}"
 OFICINA_AUTH_JWKS_URI="${OFICINA_AUTH_JWKS_URI:-}"
@@ -45,6 +46,7 @@ Variaveis suportadas:
   K8S_NAMESPACE                 Namespace Kubernetes. Default: default
   DB_SSLMODE                    SSL mode para URLs PostgreSQL. Default: require
   MICROSERVICE_NAMES            Servicos a aplicar, separados por espaco ou virgula. Default: todos
+  MICROSERVICE_REPOSITORIES_ROOT Diretorio que contem os repositorios dos servicos. Default: pai do oficina-infra
   API_GATEWAY_NAME              Nome do HTTP API para descobrir issuer quando Terraform output nao estiver disponivel. Default: eks-lab-http-api
   OFICINA_AUTH_ISSUER           Issuer JWT. Se ausente, usa terraform output api_gateway_endpoint
   OFICINA_AUTH_JWKS_URI         JWKS URI. Se ausente, deriva de OFICINA_AUTH_ISSUER
@@ -397,7 +399,16 @@ prepare_service_manifest() {
   local target_dir="$3"
   local escaped_billing_mercado_pago_secret escaped_image escaped_issuer escaped_jwks
 
-  cp -R "${REPO_ROOT}/k8s/base/microservices/${service}" "${target_dir}/${service}"
+  local source_dir="${MICROSERVICE_REPOSITORIES_ROOT}/${service}/k8s/base"
+
+  if [[ ! -d "${source_dir}" && "$(basename "${MICROSERVICE_REPOSITORIES_ROOT}")" == "${service}" ]]; then
+    source_dir="${MICROSERVICE_REPOSITORIES_ROOT}/k8s/base"
+  fi
+  if [[ ! -f "${source_dir}/kustomization.yaml" ]]; then
+    fail "base Kubernetes canonica de ${service} nao encontrada em ${source_dir}"
+  fi
+
+  cp -R "${source_dir}" "${target_dir}/${service}"
 
   escaped_billing_mercado_pago_secret="$(escape_sed_replacement "${BILLING_MERCADO_PAGO_K8S_SECRET_NAME}")"
   escaped_image="$(escape_sed_replacement "${image}")"

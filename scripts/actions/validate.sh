@@ -31,6 +31,11 @@ validate_yaml_files() {
 terraform fmt -check -recursive "${REPO_ROOT}/terraform"
 TERRAFORM_ACTION=validate "${SCRIPT_DIR}/ci-terraform.sh"
 validate_yaml_files
-kubectl kustomize "${REPO_ROOT}/k8s/base/microservices" >/tmp/oficina-infra-microservices-rendered.yaml
 kubectl kustomize "${REPO_ROOT}/k8s/overlays/lab" >/tmp/oficina-infra-lab-rendered.yaml
+if [[ -n "${MICROSERVICE_REPOSITORIES_ROOT:-}" ]]; then
+  for service in oficina-os-service oficina-billing-service oficina-execution-service; do
+    kubectl kustomize "${MICROSERVICE_REPOSITORIES_ROOT}/${service}/k8s/base" \
+      >"/tmp/${service}-rendered.yaml"
+  done
+fi
 find "${REPO_ROOT}/scripts" -type f -name '*.sh' -print0 | xargs -0 bash -n

@@ -319,7 +319,7 @@ variable "microservice_private_listener_ports" {
 
 variable "microservice_node_ports" {
   type        = map(number)
-  description = "NodePorts fixos dos Services Kubernetes dos microsservicos. Devem corresponder aos manifests em k8s/base/microservices."
+  description = "NodePorts fixos dos Services Kubernetes dos microsservicos. Devem corresponder aos manifests em k8s/base de cada repositorio de servico."
   default = {
     oficina-os-service        = 30081
     oficina-billing-service   = 30082
