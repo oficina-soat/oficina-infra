@@ -129,6 +129,16 @@ output "domain_messaging_consumer_policy_arns" {
   description = "ARNs das politicas IAM de consumo por servico consumidor."
 }
 
+output "auth_sync_lambda_function_name" {
+  value       = try(aws_lambda_function.auth_sync[0].function_name, null)
+  description = "Nome da Lambda que projeta usuarios no store de autenticacao."
+}
+
+output "auth_sync_lambda_function_arn" {
+  value       = try(aws_lambda_function.auth_sync[0].arn, null)
+  description = "ARN da Lambda que projeta usuarios no store de autenticacao."
+}
+
 output "terraform_shared_data_bucket_name" {
   value       = try(module.terraform_shared_data_bucket[0].bucket_name, null)
   description = "Bucket S3 compartilhado criado pelo Terraform, quando habilitado."

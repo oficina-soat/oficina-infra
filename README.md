@@ -150,6 +150,7 @@ Variáveis mínimas esperadas:
 - `CREATE_DOMAIN_MESSAGING=false`, quando SNS/SQS da Fase 4 não devem ser criados pelo workflow
 - `ATTACH_AUTH_SYNC_LAMBDA_CONSUMER_POLICY=false` no VocLabs, pois a identidade do laboratório não pode alterar attachments e a `LabRole` já permite consumo SQS em `us-east-1`; habilite somente em contas cuja role exija a policy gerenciada e o executor possua `iam:AttachRolePolicy`
 - `AUTH_SYNC_LAMBDA_ROLE_NAME=LabRole`, nome da role usada no deploy da `oficina-auth-sync-lambda`
+- `CREATE_AUTH_SYNC_LAMBDA=true`, para declarar pelo Terraform a função de projeção e seus event source mappings inicialmente desabilitados
 - `INSTALL_NEW_RELIC_OTEL_COLLECTOR=auto`, `NEW_RELIC_LICENSE_KEY` e `NEW_RELIC_OTLP_ENDPOINT`, quando o New Relic OpenTelemetry Collector deve ser instalado no cluster; use `INSTALL_NEW_RELIC_OTEL_COLLECTOR=false` para desabilitar explicitamente a etapa
 
 Alterar a role de um managed node group exige substituí-lo. O módulo EKS usa nome com prefixo e `create_before_destroy`: o novo node group deve ficar ativo antes da remoção do anterior, preservando os pods disponíveis durante a troca. A `LabRole` como role dos nodes é uma exceção operacional exclusiva do VocLabs; ambientes permanentes devem usar identidade por workload e policies de menor privilégio.

@@ -411,6 +411,30 @@ variable "auth_sync_lambda_role_name" {
   }
 }
 
+variable "create_auth_sync_lambda" {
+  type        = bool
+  description = "Quando true, declara a oficina-auth-sync-lambda e seus event source mappings SQS; o workflow do repositorio da Lambda atualiza o pacote nativo."
+  default     = true
+}
+
+variable "auth_sync_lambda_function_name" {
+  type        = string
+  description = "Nome canonico da Lambda que projeta usuarios operacionais no store de autenticacao."
+  default     = "oficina-auth-sync-lambda-lab"
+}
+
+variable "auth_sync_lambda_timeout_seconds" {
+  type        = number
+  description = "Timeout da oficina-auth-sync-lambda."
+  default     = 30
+}
+
+variable "auth_sync_lambda_memory_size" {
+  type        = number
+  description = "Memoria em MB da oficina-auth-sync-lambda."
+  default     = 256
+}
+
 variable "domain_messaging_max_receive_count" {
   type        = number
   description = "Quantidade maxima de recebimentos SQS antes de enviar para DLQ."
