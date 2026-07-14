@@ -27,9 +27,28 @@ jobs:
       contents: read
     env:
       TF_CLI_ARGS: -no-color
+      MICROSERVICE_REPOSITORIES_ROOT: ${{ github.workspace }}/service-sources
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Checkout oficina-os-service manifests
+        uses: actions/checkout@v6
+        with:
+          repository: oficina-soat/oficina-os-service
+          path: service-sources/oficina-os-service
+
+      - name: Checkout oficina-billing-service manifests
+        uses: actions/checkout@v6
+        with:
+          repository: oficina-soat/oficina-billing-service
+          path: service-sources/oficina-billing-service
+
+      - name: Checkout oficina-execution-service manifests
+        uses: actions/checkout@v6
+        with:
+          repository: oficina-soat/oficina-execution-service
+          path: service-sources/oficina-execution-service
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
@@ -117,6 +136,7 @@ jobs:
       K8S_JWT_SECRET_NAME: ${{ vars.K8S_JWT_SECRET_NAME || 'oficina-jwt-keys' }}
       WAIT_MICROSERVICE_ROLLOUT: ${{ vars.WAIT_MICROSERVICE_ROLLOUT || 'false' }}
       MICROSERVICE_ROLLOUT_TIMEOUT: ${{ vars.MICROSERVICE_ROLLOUT_TIMEOUT || '300s' }}
+      MICROSERVICE_REPOSITORIES_ROOT: ${{ github.workspace }}/service-sources
       INSTALL_NEW_RELIC_OTEL_COLLECTOR: ${{ vars.INSTALL_NEW_RELIC_OTEL_COLLECTOR || 'auto' }}
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
       NEW_RELIC_NAMESPACE: ${{ vars.NEW_RELIC_NAMESPACE || 'newrelic' }}
@@ -132,6 +152,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Checkout oficina-os-service manifests
+        uses: actions/checkout@v6
+        with:
+          repository: oficina-soat/oficina-os-service
+          path: service-sources/oficina-os-service
+
+      - name: Checkout oficina-billing-service manifests
+        uses: actions/checkout@v6
+        with:
+          repository: oficina-soat/oficina-billing-service
+          path: service-sources/oficina-billing-service
+
+      - name: Checkout oficina-execution-service manifests
+        uses: actions/checkout@v6
+        with:
+          repository: oficina-soat/oficina-execution-service
+          path: service-sources/oficina-execution-service
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4

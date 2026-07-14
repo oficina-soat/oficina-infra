@@ -51,9 +51,9 @@ Documentação: [Ambiente local integrado](docs/local-integration.md).
 
 ## Kubernetes dos microsserviços
 
-Este repositório é a fonte canônica dos manifests Kubernetes executáveis dos microsserviços da Fase 4. A estratégia de entrega está definida em [Estratégia de entrega dos manifestos Kubernetes](../oficina-platform/docs/kubernetes-manifest-strategy.md).
+Cada microsserviço mantém sua base Kubernetes executável em `k8s/base/`; este repositório é a fonte canônica da composição do ambiente `lab`. A estratégia de entrega está definida em [Estratégia de entrega dos manifestos Kubernetes](../oficina-platform/docs/infrastructure/kubernetes-manifest-strategy.md).
 
-Os manifests estão materializados em `k8s/base/microservices/<nome-do-servico>/`. O deploy do ambiente `lab` aplica esses manifests por [scripts/manual/apply-microservices.sh](scripts/manual/apply-microservices.sh), depois do bootstrap dos databases e do overlay compartilhado.
+As bases Kubernetes canônicas estão materializadas em `k8s/base/` de cada repositório de microsserviço. Este repositório mantém componentes compartilhados e a composição do ambiente `lab`; [scripts/manual/apply-microservices.sh](scripts/manual/apply-microservices.sh) consome as bases dos serviços depois do bootstrap dos databases.
 
 O script cria ou atualiza os secrets Kubernetes de runtime, resolve `OFICINA_AUTH_ISSUER` e `MP_JWT_VERIFY_PUBLICKEY_LOCATION`, sincroniza a chave pública JWT quando o secret `oficina/lab/jwt` está disponível, descobre a imagem mais recente de cada repositório ECR canônico e aplica apenas os serviços que já têm imagem publicada. Também grava checksums dos secrets de runtime como annotations no template dos Deployments, para que mudanças em senha de banco ou chave JWT gerem novo ReplicaSet automaticamente. Quando ainda não há imagem de um serviço no ECR, o Deployment desse serviço é ignorado nessa execução para evitar pods com `IMAGE_PLACEHOLDER`.
 
