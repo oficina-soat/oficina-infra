@@ -18,6 +18,11 @@ INSTALL_NEW_RELIC_OTEL_COLLECTOR="${INSTALL_NEW_RELIC_OTEL_COLLECTOR:-auto}"
 UPSERT_NEW_RELIC_SECRET="${UPSERT_NEW_RELIC_SECRET:-true}"
 START_RDS_ON_DEPLOY="${START_RDS_ON_DEPLOY:-false}"
 
+RDS_REQUIRED_ON_DEPLOY="${START_RDS_ON_DEPLOY}"
+if [[ "${BOOTSTRAP_SERVICE_DATABASES}" == "true" ]]; then
+  RDS_REQUIRED_ON_DEPLOY="true"
+fi
+
 resolve_install_new_relic_otel_collector() {
   local install_mode="${INSTALL_NEW_RELIC_OTEL_COLLECTOR,,}"
 
@@ -50,8 +55,12 @@ require_cmd terraform
 log "Validando identidade AWS"
 aws sts get-caller-identity >/dev/null
 
-if [[ "${START_RDS_ON_DEPLOY}" == "true" ]]; then
-  log "Solicitando inicio do RDS em paralelo com a recriacao do EKS"
+if [[ "${RDS_REQUIRED_ON_DEPLOY}" == "true" ]]; then
+  if [[ "${BOOTSTRAP_SERVICE_DATABASES}" == "true" && "${START_RDS_ON_DEPLOY}" != "true" ]]; then
+    log "Bootstrap dos databases habilitado; garantindo que o RDS esteja disponivel"
+  else
+    log "Solicitando inicio do RDS em paralelo com a recriacao do EKS"
+  fi
   "${SCRIPT_DIR}/ci-rds-power.sh" start
 fi
 
@@ -70,7 +79,7 @@ fi
 log "Aplicando Terraform do ambiente lab"
 TERRAFORM_ACTION=apply "${SCRIPT_DIR}/ci-terraform.sh"
 
-if [[ "${START_RDS_ON_DEPLOY}" == "true" ]]; then
+if [[ "${RDS_REQUIRED_ON_DEPLOY}" == "true" ]]; then
   "${SCRIPT_DIR}/ci-rds-power.sh" wait-available
 fi
 
