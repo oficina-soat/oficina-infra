@@ -81,6 +81,14 @@ O New Relic OpenTelemetry Collector do ambiente `lab` é instalado via Helm no c
 
 Documentação operacional: [New Relic OpenTelemetry Collector no EKS lab](docs/new-relic-otel-collector.md).
 
+## Simulação operacional
+
+O [simulador de operação da oficina](docs/workshop-simulator.md) gera tráfego sintético determinístico e seguro nas APIs públicas de ambientes não produtivos. Antes de uma execução controlada, valide o perfil em modo `dry-run`:
+
+```bash
+scripts/manual/simulate-workshop.py --dry-run --profile cotidiano --duration 2 --intensity 5 --seed 20260715
+```
+
 Arquivos principais:
 
 - [terraform/environments/lab/](terraform/environments/lab/)

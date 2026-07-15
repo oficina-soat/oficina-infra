@@ -11,6 +11,7 @@ source "${SCRIPT_DIR}/../lib/common.sh"
 require_cmd terraform
 require_cmd kubectl
 require_cmd yq
+require_cmd python3
 
 validate_yaml_files() {
   local yaml_files=()
@@ -39,3 +40,4 @@ if [[ -n "${MICROSERVICE_REPOSITORIES_ROOT:-}" ]]; then
   done
 fi
 find "${REPO_ROOT}/scripts" -type f -name '*.sh' -print0 | xargs -0 bash -n
+python3 -m unittest discover -s "${REPO_ROOT}/tests" -p 'test_*.py'
