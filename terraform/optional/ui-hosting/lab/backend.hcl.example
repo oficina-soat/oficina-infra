@@ -1,0 +1,4 @@
+bucket         = "bucket-de-state-existente"
+key            = "oficina/lab/optional/ui-hosting/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "tabela-opcional-de-lock"

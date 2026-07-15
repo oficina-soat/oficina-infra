@@ -31,6 +31,9 @@ validate_yaml_files() {
 
 terraform fmt -check -recursive "${REPO_ROOT}/terraform"
 TERRAFORM_ACTION=validate "${SCRIPT_DIR}/ci-terraform.sh"
+TERRAFORM_DIR="${REPO_ROOT}/terraform/optional/ui-hosting/lab" \
+  TERRAFORM_ACTION=validate \
+  "${SCRIPT_DIR}/ci-terraform.sh"
 validate_yaml_files
 kubectl kustomize "${REPO_ROOT}/k8s/overlays/lab" >/tmp/oficina-infra-lab-rendered.yaml
 if [[ -n "${MICROSERVICE_REPOSITORIES_ROOT:-}" ]]; then
