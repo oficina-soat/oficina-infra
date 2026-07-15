@@ -58,7 +58,9 @@ else
 fi
 
 rendered_values="$(mktemp)"
-trap 'rm -f "${rendered_values}"' EXIT
+rendered_manifest="$(mktemp)"
+rendered_collector_config="$(mktemp)"
+trap 'rm -f "${rendered_values}" "${rendered_manifest}" "${rendered_collector_config}"' EXIT
 
 sed \
   -e "s|NEW_RELIC_CLUSTER_NAME_PLACEHOLDER|$(escape_sed_replacement "${NEW_RELIC_CLUSTER_NAME}")|g" \
@@ -71,6 +73,30 @@ sed \
 log "Configurando repositorio Helm New Relic"
 helm repo add newrelic https://helm-charts.newrelic.com --force-update >/dev/null
 helm repo update newrelic >/dev/null
+
+log "Validando configuracao renderizada do New Relic OpenTelemetry Collector"
+helm template "${NEW_RELIC_OTEL_COLLECTOR_HELM_RELEASE}" newrelic/nr-k8s-otel-collector \
+  --namespace "${NEW_RELIC_NAMESPACE}" \
+  --values "${rendered_values}" >"${rendered_manifest}"
+
+require_cmd yq
+NEW_RELIC_DEPLOYMENT_CONFIGMAP_NAME="${NEW_RELIC_OTEL_COLLECTOR_HELM_RELEASE}-deployment-config" \
+  yq e -r \
+  'select(.kind == "ConfigMap" and .metadata.name == strenv(NEW_RELIC_DEPLOYMENT_CONFIGMAP_NAME)) | .data."deployment-config.yaml"' \
+  "${rendered_manifest}" >"${rendered_collector_config}"
+[[ -s "${rendered_collector_config}" ]] || fail "ConfigMap do collector deployment nao foi renderizado pelo chart"
+yq e '.' "${rendered_collector_config}" >/dev/null
+
+cumulativetodelta_definition_count="$(
+  awk '
+    /^processors:$/ { in_processors = 1; next }
+    in_processors && /^[^[:space:]]/ { in_processors = 0 }
+    in_processors && /^  cumulativetodelta:$/ { count++ }
+    END { print count + 0 }
+  ' "${rendered_collector_config}"
+)"
+[[ "${cumulativetodelta_definition_count}" == "1" ]] || \
+  fail "configuracao renderizada deve declarar processors.cumulativetodelta exatamente uma vez; encontrado ${cumulativetodelta_definition_count}"
 
 log "Instalando ou atualizando New Relic OpenTelemetry Collector"
 helm upgrade --install "${NEW_RELIC_OTEL_COLLECTOR_HELM_RELEASE}" newrelic/nr-k8s-otel-collector \
