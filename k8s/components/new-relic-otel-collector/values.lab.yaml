@@ -36,6 +36,7 @@ receivers:
 deployment:
   extraArgs:
     - "--config=yaml:exporters::otlp_http/newrelic::endpoint: NEW_RELIC_OTLP_ENDPOINT_PLACEHOLDER"
+    - "--config=yaml:processors::cumulativetodelta::initial_value: keep"
   configMap:
     extraConfig:
       receivers:
@@ -94,8 +95,6 @@ deployment:
                     target_label: job_label
                     replacement: oficina-microservices
       processors:
-        cumulativetodelta:
-          initial_value: keep
         transform/oficina_microservices:
           error_mode: ignore
           metric_statements:
