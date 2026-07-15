@@ -8,3 +8,5 @@ crash.*.log
 .DS_Store
 .idea/
 .tmp/
+__pycache__/
+*.py[cod]
