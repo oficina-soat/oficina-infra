@@ -79,6 +79,7 @@ aws ec2 modify-instance-metadata-options \
 - Logs: coletados dos pods pelo receiver `filelog`.
 - Métricas Prometheus e Kubernetes: coletadas pelos receivers `prometheus`, `hostmetrics`, `kubeletstats`, `k8s_events` e `kube-state-metrics`.
 - Métricas Prometheus dos microsserviços: o Deployment do collector adiciona o receiver `prometheus/oficina-microservices`, que descobre pods `oficina-os-service`, `oficina-billing-service` e `oficina-execution-service` no namespace `default` e raspa `/q/metrics` na porta `http`.
+- Métricas cumulativas de baixo tráfego: a pipeline `metrics/oficina-microservices` mantém a primeira amostra ao convertê-la para delta (`cumulativetodelta.initial_value=keep`). Isso evita que contadores e histogramas esparsos, como `payment_provider_*`, existam no endpoint Prometheus mas permaneçam ausentes do inventário do New Relic até uma segunda alteração da série.
 - Traces: recebidos por OTLP/gRPC no Service interno `nr-k8s-otel-collector-gateway` e enviados pela pipeline `traces/oficina-microservices`.
 - Logs de eventos/Outbox: os microsserviços emitem `eventType` no JSON do stdout. Como `eventType` é reservado na ingestão do New Relic, as imagens dos microsserviços também devem emitir os aliases `domainEventType` e `event.type`, mantendo o campo original no log do pod e fornecendo atributos consultáveis por NRQL.
 
