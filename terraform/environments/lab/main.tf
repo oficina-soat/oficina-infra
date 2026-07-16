@@ -65,6 +65,8 @@ locals {
     "GET /api/v1/ordens-servico"                                = "oficina-os-service"
     "GET /api/v1/ordens-servico/{ordemServicoId}"               = "oficina-os-service"
     "GET /api/v1/ordens-servico/{ordemServicoId}/historico"     = "oficina-os-service"
+    "POST /api/v1/ordens-servico/{ordemServicoId}/servicos"     = "oficina-os-service"
+    "POST /api/v1/ordens-servico/{ordemServicoId}/pecas"        = "oficina-os-service"
     "PATCH /api/v1/ordens-servico/{ordemServicoId}/estado"      = "oficina-os-service"
     "POST /api/v1/ordens-servico/{ordemServicoId}/cancelamento" = "oficina-os-service"
     "POST /api/v1/orcamentos"                                   = "oficina-billing-service"

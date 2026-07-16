@@ -8,6 +8,8 @@ data "terraform_remote_state" "main" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 locals {
   main = data.terraform_remote_state.main.outputs
   tags = merge(var.tags, {
@@ -72,4 +74,55 @@ resource "aws_apigatewayv2_route" "ui" {
   route_key          = "$default"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.ui.id}"
+}
+
+data "archive_file" "ui_telemetry" {
+  type        = "zip"
+  source_file = "${path.module}/lambda/ui_telemetry.py"
+  output_path = "${path.module}/.terraform/ui-telemetry.zip"
+}
+
+resource "aws_cloudwatch_log_group" "ui_telemetry" {
+  name              = "/aws/lambda/oficina-ui-telemetry-${var.environment}"
+  retention_in_days = 7
+  tags              = local.tags
+}
+
+resource "aws_lambda_function" "ui_telemetry" {
+  function_name    = "oficina-ui-telemetry-${var.environment}"
+  role             = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.lambda_role_name}"
+  runtime          = "python3.13"
+  handler          = "ui_telemetry.handler"
+  filename         = data.archive_file.ui_telemetry.output_path
+  source_code_hash = data.archive_file.ui_telemetry.output_base64sha256
+  timeout          = 5
+  memory_size      = 128
+  tags             = local.tags
+
+  depends_on = [
+    aws_cloudwatch_log_group.ui_telemetry,
+  ]
+}
+
+resource "aws_apigatewayv2_integration" "ui_telemetry" {
+  api_id                 = local.main.api_gateway_id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.ui_telemetry.invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = 5000
+}
+
+resource "aws_apigatewayv2_route" "ui_telemetry" {
+  api_id             = local.main.api_gateway_id
+  route_key          = "POST /ui/telemetry"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.ui_telemetry.id}"
+}
+
+resource "aws_lambda_permission" "ui_telemetry_api" {
+  statement_id  = "AllowApiGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.ui_telemetry.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "arn:aws:execute-api:${var.region}:${data.aws_caller_identity.current.account_id}:${local.main.api_gateway_id}/*/POST/ui/telemetry"
 }

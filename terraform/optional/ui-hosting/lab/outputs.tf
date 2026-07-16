@@ -17,3 +17,13 @@ output "route_key" {
   description = "Rota de fallback exclusiva da UI no HTTP API."
   value       = aws_apigatewayv2_route.ui.route_key
 }
+
+output "ui_observability_endpoint" {
+  description = "Endpoint público seguro que recebe a telemetria allowlist da UI."
+  value       = "${local.main.api_gateway_endpoint}/ui/telemetry"
+}
+
+output "ui_observability_log_group" {
+  description = "Log group usado para correlacionar a telemetria do navegador no lab."
+  value       = aws_cloudwatch_log_group.ui_telemetry.name
+}
