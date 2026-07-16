@@ -186,7 +186,7 @@ Arquivos principais:
 
 ## Validação local
 
-Instale as ferramentas recomendadas conforme [Ferramentas de validação local](../oficina-platform/docs/validation-tooling.md).
+Instale as ferramentas recomendadas conforme [Ferramentas de validação local](../oficina-platform/docs/delivery/validation-tooling.md).
 
 ```bash
 terraform fmt -check -recursive terraform
