@@ -18,6 +18,7 @@ MASTER_DB_USER="${MASTER_DB_USER:-}"
 MASTER_DB_PASSWORD="${MASTER_DB_PASSWORD:-}"
 OS_DB_PASSWORD="${OS_DB_PASSWORD:-}"
 BILLING_DB_PASSWORD="${BILLING_DB_PASSWORD:-}"
+AUTH_DB_PASSWORD="${AUTH_DB_PASSWORD:-}"
 STORE_IN_SECRETS_MANAGER="${STORE_IN_SECRETS_MANAGER:-true}"
 DB_BOOTSTRAP_NAMESPACE="${DB_BOOTSTRAP_NAMESPACE:-default}"
 DB_BOOTSTRAP_JOB_NAME="${DB_BOOTSTRAP_JOB_NAME:-oficina-service-database-bootstrap}"
@@ -32,6 +33,9 @@ OS_SECRET_NAME="oficina/lab/database/oficina-os-service"
 BILLING_DATABASE="oficina_billing"
 BILLING_USERNAME="oficina_billing_user"
 BILLING_SECRET_NAME="oficina/lab/database/oficina-billing-service"
+AUTH_DATABASE="oficina_auth"
+AUTH_USERNAME="oficina_auth_user"
+AUTH_SECRET_NAME="${AUTH_DB_SECRET_NAME:-oficina/lab/database/oficina-auth-lambda}"
 
 usage() {
   cat <<EOF
@@ -48,6 +52,8 @@ Variaveis suportadas:
   MASTER_DB_PASSWORD             Senha master. Se ausente, tenta ler do secret master
   OS_DB_PASSWORD                 Senha de oficina_os_user. Se ausente, gera uma senha
   BILLING_DB_PASSWORD            Senha de oficina_billing_user. Se ausente, gera uma senha
+  AUTH_DB_PASSWORD               Senha de oficina_auth_user. Se ausente, gera uma senha
+  AUTH_DB_SECRET_NAME            Secret exclusivo da autenticacao. Default: oficina/lab/database/oficina-auth-lambda
   STORE_IN_SECRETS_MANAGER       true|false. Default: true
   DB_SSLMODE                     SSL mode do psql. Default: require
   DB_BOOTSTRAP_NAMESPACE         Namespace do Job efemero. Default: default
@@ -76,6 +82,19 @@ read_master_secret_json() {
 generate_password() {
   require_cmd openssl
   openssl rand -base64 48 | tr -d '\n' | tr '/+' '_-' | cut -c1-32
+}
+
+read_existing_secret_password() {
+  local secret_name="$1"
+  local payload
+
+  payload="$(aws secretsmanager get-secret-value \
+    --region "${AWS_REGION}" \
+    --secret-id "${secret_name}" \
+    --query SecretString \
+    --output text 2>/dev/null || true)"
+  [[ -n "${payload}" && "${payload}" != "None" ]] || return 0
+  jq -r '.password // empty' <<<"${payload}"
 }
 
 upsert_secret() {
@@ -165,6 +184,8 @@ create_bootstrap_secret() {
     "--from-literal=MASTER_DB_PASSWORD=${MASTER_DB_PASSWORD}" \
     "--from-literal=OS_DB_PASSWORD=${OS_DB_PASSWORD}" \
     "--from-literal=BILLING_DB_PASSWORD=${BILLING_DB_PASSWORD}" \
+    "--from-literal=AUTH_DB_PASSWORD=${AUTH_DB_PASSWORD}" \
+    "--from-literal=AUTH_DB_SECRET_NAME=${AUTH_SECRET_NAME}" \
     "--from-literal=STORE_IN_SECRETS_MANAGER=false" \
     --dry-run=client \
     -o yaml | kubectl apply -f -
@@ -290,6 +311,12 @@ fi
 [[ -n "${MASTER_DB_USER}" ]] || MASTER_DB_USER="$(read_tf_output db_username)"
 [[ -n "${OS_DB_PASSWORD}" ]] || OS_DB_PASSWORD="$(generate_password)"
 [[ -n "${BILLING_DB_PASSWORD}" ]] || BILLING_DB_PASSWORD="$(generate_password)"
+if [[ -z "${AUTH_DB_PASSWORD}" && "${STORE_IN_SECRETS_MANAGER}" == "true" ]]; then
+  require_cmd aws
+  require_cmd jq
+  AUTH_DB_PASSWORD="$(read_existing_secret_password "${AUTH_SECRET_NAME}")"
+fi
+[[ -n "${AUTH_DB_PASSWORD}" ]] || AUTH_DB_PASSWORD="$(generate_password)"
 
 require_non_empty "${DB_HOST}" "DB_HOST"
 require_non_empty "${DB_PORT}" "DB_PORT"
@@ -297,6 +324,7 @@ require_non_empty "${MASTER_DB_USER}" "MASTER_DB_USER"
 require_non_empty "${MASTER_DB_PASSWORD}" "MASTER_DB_PASSWORD"
 require_non_empty "${OS_DB_PASSWORD}" "OS_DB_PASSWORD"
 require_non_empty "${BILLING_DB_PASSWORD}" "BILLING_DB_PASSWORD"
+require_non_empty "${AUTH_DB_PASSWORD}" "AUTH_DB_PASSWORD"
 
 log "Garantindo namespace ${DB_BOOTSTRAP_NAMESPACE} para bootstrap dos databases"
 ensure_namespace
@@ -324,7 +352,8 @@ kubectl logs "job/${DB_BOOTSTRAP_JOB_NAME}" \
 if [[ "${STORE_IN_SECRETS_MANAGER}" == "true" ]]; then
   upsert_secret "${OS_SECRET_NAME}" "${OS_DATABASE}" "${OS_USERNAME}" "${OS_DB_PASSWORD}"
   upsert_secret "${BILLING_SECRET_NAME}" "${BILLING_DATABASE}" "${BILLING_USERNAME}" "${BILLING_DB_PASSWORD}"
-  log "Secrets atualizados: ${OS_SECRET_NAME}, ${BILLING_SECRET_NAME}"
+  upsert_secret "${AUTH_SECRET_NAME}" "${AUTH_DATABASE}" "${AUTH_USERNAME}" "${AUTH_DB_PASSWORD}"
+  log "Secrets atualizados: ${OS_SECRET_NAME}, ${BILLING_SECRET_NAME}, ${AUTH_SECRET_NAME}"
 fi
 
 log "Bootstrap concluido via Kubernetes Job sem expor o RDS fora da VPC"

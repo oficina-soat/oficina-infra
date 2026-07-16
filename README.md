@@ -38,7 +38,7 @@ flowchart TB
     NLB --> OS
     NLB --> Billing
     NLB --> Execution
-    RDS[("RDS PostgreSQL<br/>oficina_os<br/>oficina_billing<br/>database atual da autenticação")]
+    RDS[("RDS PostgreSQL<br/>oficina_os<br/>oficina_billing<br/>oficina_auth")]
   end
 
   subgraph Async["Mensageria de domínio"]
@@ -98,6 +98,7 @@ O primeiro artefato provisionável deste repositório é o RDS PostgreSQL compar
 oficina-postgres-lab
 +-- oficina_os / oficina_os_user
 +-- oficina_billing / oficina_billing_user
++-- oficina_auth / oficina_auth_user
 ```
 
 Documentação operacional: [RDS PostgreSQL compartilhado](docs/rds-postgresql.md).

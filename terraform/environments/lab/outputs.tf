@@ -23,6 +23,16 @@ output "db_master_user_secret_arn" {
   description = "ARN do secret gerenciado pela AWS para o usuario administrativo."
 }
 
+output "auth_database_secret_name" {
+  value       = try(aws_secretsmanager_secret.auth_database[0].name, null)
+  description = "Nome do secret exclusivo do database oficina_auth."
+}
+
+output "auth_database_secret_arn" {
+  value       = try(aws_secretsmanager_secret.auth_database[0].arn, null)
+  description = "ARN do secret exclusivo do database oficina_auth."
+}
+
 output "db_security_group_id" {
   value       = try(module.rds_postgres[0].security_group_id, null)
   description = "Security group do RDS."
