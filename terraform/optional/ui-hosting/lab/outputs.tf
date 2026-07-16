@@ -1,19 +1,19 @@
-output "bucket_name" {
-  description = "Bucket que recebe o build Angular."
-  value       = aws_s3_bucket.ui.id
+output "ecr_repository_url" {
+  description = "URL do repositório que recebe a imagem validada da UI."
+  value       = module.ecr.repository_url
 }
 
-output "cloudfront_distribution_id" {
-  description = "Distribuição opcional usada pelo pipeline; vazia no fallback S3 do lab."
-  value       = ""
-}
-
-output "website_domain_name" {
-  description = "Domínio público padrão da UI."
-  value       = aws_s3_bucket_website_configuration.ui.website_endpoint
+output "eks_cluster_name" {
+  description = "Cluster compartilhado onde a UI opcional é executada."
+  value       = local.main.eks_cluster_name
 }
 
 output "ui_url" {
-  description = "URL pública da UI no website S3 do lab."
-  value       = "http://${aws_s3_bucket_website_configuration.ui.website_endpoint}"
+  description = "URL HTTPS pública compartilhada pela UI e APIs."
+  value       = local.main.api_gateway_endpoint
+}
+
+output "route_key" {
+  description = "Rota de fallback exclusiva da UI no HTTP API."
+  value       = aws_apigatewayv2_route.ui.route_key
 }

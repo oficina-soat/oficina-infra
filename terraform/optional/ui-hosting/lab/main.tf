@@ -1,80 +1,75 @@
-data "aws_caller_identity" "current" {}
+data "terraform_remote_state" "main" {
+  backend = "s3"
+
+  config = {
+    bucket = var.main_state_bucket
+    key    = var.main_state_key
+    region = var.main_state_region
+  }
+}
 
 locals {
-  bucket_name = coalesce(
-    var.bucket_name,
-    "oficina-ui-${var.environment}-${data.aws_caller_identity.current.account_id}-${var.region}",
-  )
+  main = data.terraform_remote_state.main.outputs
+  tags = merge(var.tags, {
+    Project               = "oficina"
+    Environment           = var.environment
+    DeploymentEnvironment = var.environment
+    OptionalComponent     = "ui-workload"
+    Repository            = "oficina-infra"
+  })
 }
 
-resource "aws_s3_bucket" "ui" {
-  bucket        = local.bucket_name
-  force_destroy = var.force_destroy
-}
-
-resource "aws_s3_bucket_ownership_controls" "ui" {
-  bucket = aws_s3_bucket.ui.id
-
-  rule {
-    object_ownership = "BucketOwnerEnforced"
+check "shared_infrastructure_outputs" {
+  assert {
+    condition = alltrue([
+      try(local.main.vpc_id, null) != null,
+      try(length(local.main.subnet_ids), 0) > 0,
+      try(local.main.eks_cluster_name, null) != null,
+      try(local.main.eks_cluster_security_group_id, null) != null,
+      try(local.main.eks_node_group_autoscaling_group_name, null) != null,
+      try(local.main.api_gateway_id, null) != null,
+      try(local.main.api_gateway_vpc_link_id, null) != null,
+      try(length(local.main.api_gateway_vpc_link_security_group_ids), 0) > 0,
+    ])
+    error_message = "O state principal deve publicar EKS, VPC, HTTP API e VPC Link antes da stack opcional da UI."
   }
 }
 
-resource "aws_s3_bucket_public_access_block" "ui" {
-  bucket                  = aws_s3_bucket.ui.id
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = true
-  restrict_public_buckets = false
+module "ecr" {
+  source = "../../../modules/ecr"
+
+  repository_name = var.ecr_repository_name
+  force_delete    = var.force_destroy
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "ui" {
-  bucket = aws_s3_bucket.ui.id
+module "private_nlb" {
+  source = "../../../modules/internal_nodeport_nlb"
 
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
+  name                              = substr("${var.cluster_name}-ui", 0, 32)
+  vpc_id                            = local.main.vpc_id
+  subnet_ids                        = local.main.subnet_ids
+  listener_port                     = var.listener_port
+  target_node_port                  = var.node_port
+  target_autoscaling_group_name     = local.main.eks_node_group_autoscaling_group_name
+  allowed_source_security_group_ids = local.main.api_gateway_vpc_link_security_group_ids
+  target_security_group_ids         = [local.main.eks_cluster_security_group_id]
+  tags                              = local.tags
 }
 
-resource "aws_s3_bucket_versioning" "ui" {
-  bucket = aws_s3_bucket.ui.id
-
-  versioning_configuration {
-    status = "Enabled"
-  }
+resource "aws_apigatewayv2_integration" "ui" {
+  api_id               = local.main.api_gateway_id
+  integration_type     = "HTTP_PROXY"
+  integration_method   = "ANY"
+  integration_uri      = module.private_nlb.listener_arn
+  connection_type      = "VPC_LINK"
+  connection_id        = local.main.api_gateway_vpc_link_id
+  timeout_milliseconds = 30000
+  description          = "Oficina UI opcional no EKS"
 }
 
-resource "aws_s3_bucket_website_configuration" "ui" {
-  bucket = aws_s3_bucket.ui.id
-
-  index_document {
-    suffix = "index.html"
-  }
-
-  error_document {
-    key = "index.html"
-  }
-}
-
-data "aws_iam_policy_document" "ui" {
-  statement {
-    sid     = "AllowPublicWebsiteReadOnly"
-    actions = ["s3:GetObject"]
-    resources = [
-      "${aws_s3_bucket.ui.arn}/*",
-    ]
-    principals {
-      type        = "AWS"
-      identifiers = ["*"]
-    }
-  }
-}
-
-resource "aws_s3_bucket_policy" "ui" {
-  bucket = aws_s3_bucket.ui.id
-  policy = data.aws_iam_policy_document.ui.json
-
-  depends_on = [aws_s3_bucket_public_access_block.ui]
+resource "aws_apigatewayv2_route" "ui" {
+  api_id             = local.main.api_gateway_id
+  route_key          = "$default"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.ui.id}"
 }

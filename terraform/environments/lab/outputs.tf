@@ -58,6 +58,16 @@ output "eks_cluster_endpoint" {
   description = "Endpoint do cluster EKS compartilhado."
 }
 
+output "eks_cluster_security_group_id" {
+  value       = try(module.eks[0].cluster_security_group_id, null)
+  description = "Security group dos nodes e do control plane usado pelas integracoes opcionais."
+}
+
+output "eks_node_group_autoscaling_group_name" {
+  value       = try(module.eks[0].node_group_autoscaling_group_name, null)
+  description = "Auto Scaling Group do node group usado por target groups opcionais."
+}
+
 output "ecr_repository_urls" {
   value = {
     for name, repository in module.ecr : name => repository.repository_url
@@ -68,6 +78,21 @@ output "ecr_repository_urls" {
 output "api_gateway_endpoint" {
   value       = try(module.api_gateway[0].api_endpoint, null)
   description = "Endpoint publico do API Gateway HTTP."
+}
+
+output "api_gateway_id" {
+  value       = try(module.api_gateway[0].api_id, null)
+  description = "ID do HTTP API compartilhado."
+}
+
+output "api_gateway_vpc_link_id" {
+  value       = try(module.api_gateway[0].vpc_link_id, null)
+  description = "ID do VPC Link compartilhado pelas integracoes privadas."
+}
+
+output "api_gateway_vpc_link_security_group_ids" {
+  value       = local.api_gateway_vpc_link_security_group_ids
+  description = "Security groups usados pelo VPC Link compartilhado."
 }
 
 output "api_gateway_http_route_keys" {

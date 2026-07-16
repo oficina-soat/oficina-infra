@@ -7,7 +7,7 @@ provider "aws" {
       Environment           = var.environment
       DeploymentEnvironment = var.environment
       Repository            = "oficina-infra"
-      OptionalComponent     = "ui-hosting"
+      OptionalComponent     = "ui-workload"
     })
   }
 }

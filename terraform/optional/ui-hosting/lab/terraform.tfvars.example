@@ -1,8 +1,3 @@
-region      = "us-east-1"
-environment = "lab"
-
-# Informe somente origins, sem caminhos. O API Gateway do lab pode ser usado
-# tanto para as APIs quanto para autenticação.
-connect_src_origins = [
-  "https://example.execute-api.us-east-1.amazonaws.com",
-]
+region            = "us-east-1"
+main_state_bucket = "tf-shared-eks-lab-123456789012-us-east-1"
+main_state_region = "us-east-1"
