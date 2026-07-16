@@ -16,7 +16,7 @@ locals {
     "img-src 'self' data:",
     "object-src 'none'",
     "script-src 'self'",
-    "style-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
   ])
 }
 
@@ -126,6 +126,16 @@ resource "aws_cloudfront_response_headers_policy" "security" {
     items {
       header   = "Permissions-Policy"
       value    = "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
+      override = true
+    }
+    items {
+      header   = "Cross-Origin-Opener-Policy"
+      value    = "same-origin"
+      override = true
+    }
+    items {
+      header   = "Cross-Origin-Resource-Policy"
+      value    = "same-origin"
       override = true
     }
   }

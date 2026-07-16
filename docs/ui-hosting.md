@@ -8,7 +8,7 @@ A composição em `terraform/optional/ui-hosting/lab` hospeda o `oficina-ui` em 
 - CloudFront com certificado padrão, TLS 1.2, compressão e classe de preço econômica;
 - cache longo para artefatos versionados e cache desabilitado para `index.html` e `config/*`;
 - fallback `403/404` para `index.html`, necessário às rotas da SPA;
-- CSP, HSTS, proteção contra framing e MIME sniffing, política de referência e Permissions Policy;
+- CSP, HSTS, proteção contra framing e MIME sniffing, políticas de referência, permissões e isolamento cross-origin;
 - outputs exclusivos para o pipeline do `oficina-ui`.
 
 ## State e execução
