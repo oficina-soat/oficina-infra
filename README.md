@@ -15,6 +15,81 @@ Inventário de cópia e adaptação: [Inventário de migração dos repositório
 | Infraestrutura compartilhada | `eks-lab` |
 | State Terraform | `oficina/lab/infra/terraform.tfstate` |
 
+### Arquitetura do lab
+
+```mermaid
+flowchart TB
+  User["Clientes HTTP"] --> APIGW["API Gateway HTTP API"]
+
+  subgraph LambdaZone["Lambdas AWS"]
+    Auth["oficina-auth-lambda<br/>login, issuer e JWKS"]
+    AuthSync["oficina-auth-sync-lambda<br/>projeção de usuários"]
+    Notification["oficina-notificacao-lambda<br/>e-mail"]
+  end
+
+  subgraph Network["VPC do lab"]
+    VpcLink["API Gateway VPC Link"] --> NLB["NLBs internos"]
+    subgraph EKS["EKS eks-lab"]
+      OS["oficina-os-service"]
+      Billing["oficina-billing-service"]
+      Execution["oficina-execution-service"]
+      OTel["New Relic OTel Collector"]
+    end
+    NLB --> OS
+    NLB --> Billing
+    NLB --> Execution
+    RDS[("RDS PostgreSQL<br/>oficina_os<br/>oficina_billing<br/>database atual da autenticação")]
+  end
+
+  subgraph Async["Mensageria de domínio"]
+    SNS["Tópicos SNS canônicos"] --> SQS["Filas SQS por consumidor"]
+    SQS --> DLQ["DLQs por tópico e consumidor"]
+  end
+
+  subgraph AWSData["Persistência e configuração AWS"]
+    Dynamo[("DynamoDB<br/>catálogo, estoque, execuções,<br/>Outbox e idempotência")]
+    Secrets["Secrets Manager<br/>JWT e credenciais de banco"]
+    ECR["ECR<br/>imagens dos microsserviços"]
+  end
+
+  APIGW --> Auth
+  APIGW --> Notification
+  APIGW --> VpcLink
+  SQS --> AuthSync
+  OS --> RDS
+  Billing --> RDS
+  Auth --> RDS
+  AuthSync --> RDS
+  Execution --> Dynamo
+  OS --> SNS
+  Billing --> SNS
+  Execution --> SNS
+  SQS --> OS
+  SQS --> Billing
+  SQS --> Execution
+  ECR --> EKS
+  Secrets --> Auth
+  Secrets --> OS
+  Secrets --> Billing
+  OS -. "OTLP" .-> OTel
+  Billing -. "OTLP" .-> OTel
+  Execution -. "OTLP" .-> OTel
+  OTel --> NewRelic["New Relic"]
+
+  classDef edge fill:#e7f1fa,stroke:#1f5f99,color:#14202b;
+  classDef compute fill:#e5f5ec,stroke:#176b45,color:#14202b;
+  classDef data fill:#fff3d6,stroke:#7a4b00,color:#14202b;
+  classDef async fill:#f3e8ff,stroke:#6b21a8,color:#14202b;
+  classDef observe fill:#fdeaea,stroke:#a22929,color:#14202b;
+  class APIGW,VpcLink,NLB edge;
+  class Auth,AuthSync,Notification,OS,Billing,Execution,ECR compute;
+  class RDS,Dynamo,Secrets data;
+  class SNS,SQS,DLQ async;
+  class OTel,NewRelic observe;
+```
+
+As rotas públicas e o fluxo interno estão detalhados em [API Gateway e rotas públicas](../oficina-platform/docs/infrastructure/api-gateway-public-routes.md); ownership, eventos e persistência permanecem normativos no [`oficina-platform`](../oficina-platform/).
+
 ## RDS PostgreSQL compartilhado
 
 O primeiro artefato provisionável deste repositório é o RDS PostgreSQL compartilhado da Fase 4:
