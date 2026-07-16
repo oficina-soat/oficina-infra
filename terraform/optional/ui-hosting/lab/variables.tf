@@ -67,6 +67,12 @@ variable "force_destroy" {
   default     = true
 }
 
+variable "lambda_role_name" {
+  description = "Role preexistente permitida para Lambdas no ambiente educacional."
+  type        = string
+  default     = "LabRole"
+}
+
 variable "tags" {
   description = "Tags adicionais aplicadas aos recursos."
   type        = map(string)
