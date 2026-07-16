@@ -49,26 +49,28 @@ jobs:
         with:
           terraform_wrapper: false
 
-      - name: Validate backend configuration
+      - name: Resolve backend configuration
+        id: backend
+        working-directory: .
         shell: bash
         run: |
-          set -euo pipefail
-          test -n "${TF_STATE_BUCKET}" || {
-            echo "Configure TF_STATE_BUCKET nas variables do repositório." >&2
-            exit 1
-          }
+          ./scripts/actions/resolve-terraform-backend.sh >> "${GITHUB_OUTPUT}"
 
       - name: Terraform init
+        env:
+          RESOLVED_TF_STATE_BUCKET: ${{ steps.backend.outputs.bucket }}
+          RESOLVED_TF_STATE_REGION: ${{ steps.backend.outputs.region }}
+          RESOLVED_TF_STATE_DYNAMODB_TABLE: ${{ steps.backend.outputs.dynamodb_table }}
         shell: bash
         run: |
           set -euo pipefail
           args=(
-            "-backend-config=bucket=${TF_STATE_BUCKET}"
+            "-backend-config=bucket=${RESOLVED_TF_STATE_BUCKET}"
             "-backend-config=key=oficina/lab/optional/ui-hosting/terraform.tfstate"
-            "-backend-config=region=${TF_STATE_REGION}"
+            "-backend-config=region=${RESOLVED_TF_STATE_REGION}"
           )
-          if [[ -n "${TF_STATE_DYNAMODB_TABLE:-}" ]]; then
-            args+=("-backend-config=dynamodb_table=${TF_STATE_DYNAMODB_TABLE}")
+          if [[ -n "${RESOLVED_TF_STATE_DYNAMODB_TABLE:-}" ]]; then
+            args+=("-backend-config=dynamodb_table=${RESOLVED_TF_STATE_DYNAMODB_TABLE}")
           fi
           terraform init -input=false "${args[@]}"
 
