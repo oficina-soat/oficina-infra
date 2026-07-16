@@ -1,10 +1,10 @@
-name: UI Hosting Lab
+name: UI Workload Infrastructure Lab
 
 on:
   workflow_dispatch:
     inputs:
       action:
-        description: "Ação Terraform da hospedagem opcional"
+        description: "Ação Terraform da infraestrutura opcional da UI"
         required: true
         type: choice
         options:
@@ -55,6 +55,17 @@ jobs:
         run: |
           ./scripts/actions/resolve-terraform-backend.sh >> "${GITHUB_OUTPUT}"
 
+      - name: Export main state configuration
+        env:
+          RESOLVED_TF_STATE_BUCKET: ${{ steps.backend.outputs.bucket }}
+          RESOLVED_TF_STATE_REGION: ${{ steps.backend.outputs.region }}
+        shell: bash
+        run: |
+          {
+            echo "TF_VAR_main_state_bucket=${RESOLVED_TF_STATE_BUCKET}"
+            echo "TF_VAR_main_state_region=${RESOLVED_TF_STATE_REGION}"
+          } >> "${GITHUB_ENV}"
+
       - name: Terraform init
         env:
           RESOLVED_TF_STATE_BUCKET: ${{ steps.backend.outputs.bucket }}
@@ -93,9 +104,10 @@ jobs:
         shell: bash
         run: |
           {
-            echo "### UI Hosting Lab"
+            echo "### UI Workload Infrastructure Lab"
             echo
             echo "- URL: $(terraform output -raw ui_url)"
-            echo "- Distribution: $(terraform output -raw cloudfront_distribution_id)"
-            echo "- Bucket: $(terraform output -raw bucket_name)"
+            echo "- ECR: $(terraform output -raw ecr_repository_url)"
+            echo "- Cluster: $(terraform output -raw eks_cluster_name)"
+            echo "- Route: $(terraform output -raw route_key)"
           } >> "${GITHUB_STEP_SUMMARY}"

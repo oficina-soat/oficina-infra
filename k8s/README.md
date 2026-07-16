@@ -10,6 +10,8 @@ O New Relic OpenTelemetry Collector não é referenciado pelo overlay Kustomize 
 
 Cada microsserviço é a fonte canônica de sua base Kubernetes executável, conforme a [Estratégia de entrega dos manifestos Kubernetes](../../oficina-platform/docs/infrastructure/kubernetes-manifest-strategy.md). Este repositório mantém os componentes compartilhados e a composição do ambiente `lab`.
 
+O `oficina-ui` segue a mesma regra: seus manifests executáveis ficam em `../oficina-ui/k8s/`. A infraestrutura opcional de ECR, NLB e rota `$default` está descrita em [Workload opcional da UI](../docs/ui-workload.md); ela não pertence ao overlay compartilhado deste repositório.
+
 Os templates normativos ficam no `oficina-platform`:
 
 - `templates/kubernetes/base/oficina-os-service/`;
