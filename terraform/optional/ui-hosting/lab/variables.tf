@@ -23,19 +23,6 @@ variable "force_destroy" {
   default     = true
 }
 
-variable "connect_src_origins" {
-  description = "Origins HTTPS públicos permitidos pelo CSP para acesso às APIs."
-  type        = list(string)
-  default     = []
-
-  validation {
-    condition = alltrue([
-      for origin in var.connect_src_origins : can(regex("^https://[^/]+$", origin))
-    ])
-    error_message = "Cada origin de connect_src_origins deve usar HTTPS e não conter caminho."
-  }
-}
-
 variable "tags" {
   description = "Tags adicionais aplicadas aos recursos."
   type        = map(string)
