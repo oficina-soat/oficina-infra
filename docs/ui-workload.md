@@ -9,6 +9,8 @@ flowchart LR
     Browser[Navegador] --> APIGW[HTTP API compartilhado]
     APIGW -->|rotas explícitas| Services[Serviços e Lambdas]
     APIGW -->|$default| Link[VPC Link]
+    APIGW -->|POST /ui/telemetry| Telemetry[Lambda de telemetria]
+    Telemetry --> Logs[CloudWatch Logs - 7 dias]
     Link --> NLB[NLB interno opcional]
     NLB --> UI[Service e Pod oficina-ui]
     ECR[ECR oficina-ui] --> UI
@@ -24,8 +26,10 @@ O state opcional cria:
 - NLB interno ligado ao NodePort `30084`;
 - integração privada pelo VPC Link existente;
 - rota `$default` no HTTP API compartilhado.
+- Lambda de coleta da telemetria sanitizada do navegador;
+- rota explícita `POST /ui/telemetry`, permissão de invocação e grupo de logs com retenção de sete dias.
 
-O repositório `oficina-ui` mantém Dockerfile, Nginx, Deployment, Service, probes, recursos e pipeline de rollout. O state principal apenas publica outputs estáveis para composições opcionais; não cria nem implanta a UI.
+O repositório `oficina-ui` mantém Dockerfile, Nginx, Deployment, Service, probes, recursos e pipeline de rollout. O state principal apenas publica outputs estáveis para composições opcionais; não cria nem implanta a UI. A composição opcional também publica `ui_observability_endpoint` e `ui_observability_log_group`, consumidos pelo deploy e pela homologação.
 
 ## Execução e remoção
 

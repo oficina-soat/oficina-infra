@@ -110,4 +110,4 @@ FROM Span SELECT count(*) WHERE service.namespace = 'oficina' SINCE 30 minutes a
 FROM Log SELECT count(*) WHERE service.namespace = 'oficina' AND domainEventType IS NOT NULL SINCE 30 minutes ago FACET service.name, domainEventType
 ```
 
-As evidências finais de logs, métricas, traces, dashboards e alertas devem ser registradas no [checklist final da Fase 4](../../oficina-platform/docs/phase-4-delivery-checklist.md).
+As evidências finais de logs, métricas, traces, dashboards e alertas devem ser registradas no [checklist final da Fase 4](../../oficina-platform/docs/delivery/phase-4-delivery-checklist.md).

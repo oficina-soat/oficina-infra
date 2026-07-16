@@ -4,10 +4,10 @@ Este documento descreve a materialização executável, em Terraform, dos contra
 
 Referências normativas:
 
-- [Padrão DynamoDB do oficina-execution-service](../../oficina-platform/docs/dynamodb-execution-service.md)
+- [Padrão DynamoDB do oficina-execution-service](../../oficina-platform/docs/infrastructure/dynamodb-execution-service.md)
 - [Contrato de Tópicos de Mensageria](../../oficina-platform/contracts/Contrato%20de%20Tópicos%20de%20Mensageria.md)
-- [Nomes de runtime, secrets e infraestrutura](../../oficina-platform/docs/infra-runtime-naming.md)
-- [Plano de migração para o repositório unificado de infraestrutura](../../oficina-platform/docs/infrastructure-migration-plan.md)
+- [Nomes de runtime, secrets e infraestrutura](../../oficina-platform/docs/infrastructure/infra-runtime-naming.md)
+- [Plano de migração para o repositório unificado de infraestrutura](../../oficina-platform/docs/infrastructure/infrastructure-migration-plan.md)
 
 ## Terraform
 

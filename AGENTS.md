@@ -6,11 +6,11 @@ Este repositório é o destino canônico da infraestrutura executável da suíte
 
 O repositório normativo da plataforma é [../oficina-platform](../oficina-platform/). Antes de alterar nomes canônicos, contratos, secrets, variáveis, rotas públicas, padrões de deploy ou decisões arquiteturais, consulte os documentos relacionados no `oficina-platform`, especialmente:
 
-- [Escopo do Repositório Unificado de Infraestrutura](../oficina-platform/docs/infrastructure-repository-scope.md)
-- [Plano de migração para o repositório unificado de infraestrutura](../oficina-platform/docs/infrastructure-migration-plan.md)
-- [Nomes de runtime, secrets e infraestrutura](../oficina-platform/docs/infra-runtime-naming.md)
-- [Estratégia de entrega dos manifestos Kubernetes](../oficina-platform/docs/kubernetes-manifest-strategy.md)
-- [Ferramentas de validação local](../oficina-platform/docs/validation-tooling.md)
+- [Escopo do Repositório Unificado de Infraestrutura](../oficina-platform/docs/infrastructure/infrastructure-repository-scope.md)
+- [Plano de migração para o repositório unificado de infraestrutura](../oficina-platform/docs/infrastructure/infrastructure-migration-plan.md)
+- [Nomes de runtime, secrets e infraestrutura](../oficina-platform/docs/infrastructure/infra-runtime-naming.md)
+- [Estratégia de entrega dos manifestos Kubernetes](../oficina-platform/docs/infrastructure/kubernetes-manifest-strategy.md)
+- [Ferramentas de validação local](../oficina-platform/docs/delivery/validation-tooling.md)
 
 ## Diretrizes
 
