@@ -1,0 +1,100 @@
+name: UI Hosting Lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Ação Terraform da hospedagem opcional"
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+        default: plan
+
+concurrency:
+  group: ui-hosting-lab
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  TF_IN_AUTOMATION: "true"
+  TF_CLI_ARGS: -no-color
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  AWS_DEFAULT_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+  TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || 'us-east-1' }}
+  TF_STATE_DYNAMODB_TABLE: ${{ vars.TF_STATE_DYNAMODB_TABLE }}
+  TF_VAR_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+  TF_VAR_connect_src_origins: ${{ vars.UI_CONNECT_SRC_ORIGINS || '[]' }}
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: terraform/optional/ui-hosting/lab
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+
+      - name: Validate backend configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${TF_STATE_BUCKET}" || {
+            echo "Configure TF_STATE_BUCKET nas variables do repositório." >&2
+            exit 1
+          }
+
+      - name: Terraform init
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            "-backend-config=bucket=${TF_STATE_BUCKET}"
+            "-backend-config=key=oficina/lab/optional/ui-hosting/terraform.tfstate"
+            "-backend-config=region=${TF_STATE_REGION}"
+          )
+          if [[ -n "${TF_STATE_DYNAMODB_TABLE:-}" ]]; then
+            args+=("-backend-config=dynamodb_table=${TF_STATE_DYNAMODB_TABLE}")
+          fi
+          terraform init -input=false "${args[@]}"
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        if: inputs.action != 'destroy'
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Terraform apply
+        if: inputs.action == 'apply'
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Terraform destroy
+        if: inputs.action == 'destroy'
+        run: terraform destroy -input=false -auto-approve
+
+      - name: Publish stack outputs
+        if: inputs.action == 'apply'
+        shell: bash
+        run: |
+          {
+            echo "### UI Hosting Lab"
+            echo
+            echo "- URL: $(terraform output -raw ui_url)"
+            echo "- Distribution: $(terraform output -raw cloudfront_distribution_id)"
+            echo "- Bucket: $(terraform output -raw bucket_name)"
+          } >> "${GITHUB_STEP_SUMMARY}"

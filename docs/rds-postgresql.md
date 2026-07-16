@@ -14,6 +14,9 @@ O padrão implementado segue o contrato canônico do `oficina-platform`:
 - database do `oficina-billing-service`: `oficina_billing`;
 - owner do `oficina-billing-service`: `oficina_billing_user`;
 - secret AWS do `oficina-billing-service`: `oficina/lab/database/oficina-billing-service`.
+- database das Lambdas de autenticação: `oficina_auth`;
+- owner das Lambdas de autenticação: `oficina_auth_user`;
+- secret AWS das Lambdas de autenticação: `oficina/lab/database/oficina-auth-lambda`.
 
 ## Artefatos
 
@@ -35,8 +38,10 @@ O bootstrap aplica:
 ```sql
 REVOKE CONNECT ON DATABASE oficina_os FROM PUBLIC;
 REVOKE CONNECT ON DATABASE oficina_billing FROM PUBLIC;
+REVOKE CONNECT ON DATABASE oficina_auth FROM PUBLIC;
 GRANT CONNECT ON DATABASE oficina_os TO oficina_os_user;
 GRANT CONNECT ON DATABASE oficina_billing TO oficina_billing_user;
+GRANT CONNECT ON DATABASE oficina_auth TO oficina_auth_user;
 ```
 
 Depois, em cada database, o schema `public` fica sob ownership do usuário do próprio serviço.

@@ -46,6 +46,17 @@ variable "create_rds" {
   default     = true
 }
 
+variable "auth_database_secret_name" {
+  type        = string
+  description = "Nome do secret exclusivo preenchido pelo bootstrap do database de autenticacao."
+  default     = "oficina/lab/database/oficina-auth-lambda"
+
+  validation {
+    condition     = trimspace(var.auth_database_secret_name) != ""
+    error_message = "auth_database_secret_name nao pode ser vazio."
+  }
+}
+
 variable "db_identifier" {
   type        = string
   description = "Identificador da instancia RDS PostgreSQL compartilhada."

@@ -321,6 +321,19 @@ module "rds_postgres" {
   tags                       = local.default_tags
 }
 
+resource "aws_secretsmanager_secret" "auth_database" {
+  count = var.create_rds ? 1 : 0
+
+  name                    = var.auth_database_secret_name
+  description             = "Conexao exclusiva das Lambdas ao database oficina_auth"
+  recovery_window_in_days = 0
+
+  tags = merge(local.default_tags, {
+    Component = "auth-database"
+    Owner     = "oficina-auth-lambda"
+  })
+}
+
 module "network" {
   count  = local.create_network ? 1 : 0
   source = "../../modules/network"
