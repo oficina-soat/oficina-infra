@@ -16,6 +16,8 @@ A composição em `terraform/optional/ui-hosting/lab` hospeda o `oficina-ui` em 
 O workflow `UI Hosting Lab` é manual. Ele aceita `plan`, `apply` ou `destroy` e usa por padrão a key independente `oficina/lab/optional/ui-hosting/terraform.tfstate`. O bucket do backend é derivado automaticamente da conta, infraestrutura compartilhada e região AWS; `TF_STATE_BUCKET`, `TF_STATE_REGION` e `TF_STATE_DYNAMODB_TABLE` permanecem disponíveis somente como overrides. Configure no repositório:
 
 - secrets `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` e, quando necessário, `AWS_SESSION_TOKEN`;
-- var `UI_CONNECT_SRC_ORIGINS` como lista JSON contendo os origins públicos das APIs.
+- var opcional `UI_CONNECT_SRC_ORIGINS` como lista JSON para sobrescrever os origins públicos descobertos pelo state principal.
+
+Sem override, o workflow lê `api_gateway_endpoint` do state principal e o usa como `connect-src` da CSP. Assim, `action=apply` funciona apenas com as credenciais AWS do repositório.
 
 Aplicar ou destruir esse workflow não executa o workflow `Deploy Lab` e não altera componentes obrigatórios.
