@@ -30,7 +30,7 @@ env:
   TF_STATE_REGION: ${{ vars.TF_STATE_REGION || vars.AWS_REGION || 'us-east-1' }}
   TF_STATE_DYNAMODB_TABLE: ${{ vars.TF_STATE_DYNAMODB_TABLE }}
   TF_VAR_region: ${{ vars.AWS_REGION || 'us-east-1' }}
-  TF_VAR_connect_src_origins: ${{ vars.UI_CONNECT_SRC_ORIGINS }}
+  UI_CONNECT_SRC_ORIGINS_OVERRIDE: ${{ vars.UI_CONNECT_SRC_ORIGINS }}
 
 jobs:
   terraform:
@@ -79,7 +79,7 @@ jobs:
             echo "O state principal não possui api_gateway_endpoint." >&2
             exit 1
           fi
-          origins="${TF_VAR_connect_src_origins:-$(jq -cn --arg origin "${endpoint%/}" '[$origin]')}"
+          origins="${UI_CONNECT_SRC_ORIGINS_OVERRIDE:-$(jq -cn --arg origin "${endpoint%/}" '[$origin]')}"
           echo "TF_VAR_connect_src_origins=${origins}" >> "${GITHUB_ENV}"
 
       - name: Terraform init
