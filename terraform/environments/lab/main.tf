@@ -59,6 +59,8 @@ locals {
     "DELETE /api/v1/usuarios/{usuarioId}"                         = "oficina-os-service"
     "POST /api/v1/usuarios/{usuarioId}/bloqueio"                  = "oficina-os-service"
     "POST /api/v1/usuarios/{usuarioId}/reativacao"                = "oficina-os-service"
+    "GET /api/v1/dashboard/ordens-servico"                        = "oficina-os-service"
+    "GET /api/v1/dashboard/usuarios"                              = "oficina-os-service"
     "POST /api/v1/clientes"                                       = "oficina-os-service"
     "GET /api/v1/clientes"                                        = "oficina-os-service"
     "GET /api/v1/clientes/{clienteId}"                            = "oficina-os-service"
@@ -91,6 +93,7 @@ locals {
     "POST /api/v1/pagamentos/{pagamentoId}/confirmacao"           = "oficina-billing-service"
     "POST /api/v1/pagamentos/{pagamentoId}/recusa"                = "oficina-billing-service"
     "POST /api/v1/pagamentos/{pagamentoId}/cancelamento"          = "oficina-billing-service"
+    "GET /api/v1/dashboard/faturamento"                           = "oficina-billing-service"
     "POST /api/v1/servicos"                                       = "oficina-execution-service"
     "GET /api/v1/servicos"                                        = "oficina-execution-service"
     "GET /api/v1/servicos/{servicoId}"                            = "oficina-execution-service"
@@ -115,6 +118,7 @@ locals {
     "POST /api/v1/execucoes/{execucaoId}/reparo/inicio"           = "oficina-execution-service"
     "POST /api/v1/execucoes/{execucaoId}/reparo/conclusao"        = "oficina-execution-service"
     "POST /api/v1/execucoes/{execucaoId}/cancelamento"            = "oficina-execution-service"
+    "GET /api/v1/dashboard/execucao"                              = "oficina-execution-service"
   }
   microservice_public_api_gateway_http_routes = local.expose_microservices_api_gateway ? {
     for route_key, service_name in local.microservice_public_route_services : route_key => {
