@@ -5,6 +5,9 @@ locals {
   target_security_group_ids_by_index = {
     for index, security_group_id in var.target_security_group_ids : tostring(index) => security_group_id
   }
+  allowed_source_cidr_blocks_by_index = {
+    for index, cidr_block in var.allowed_source_cidr_blocks : tostring(index) => cidr_block
+  }
 }
 
 resource "aws_security_group" "this" {
@@ -25,6 +28,18 @@ resource "aws_vpc_security_group_ingress_rule" "from_sources" {
   ip_protocol                  = "tcp"
   from_port                    = var.listener_port
   to_port                      = var.listener_port
+
+  tags = var.tags
+}
+
+resource "aws_vpc_security_group_ingress_rule" "from_cidr_sources" {
+  for_each = local.allowed_source_cidr_blocks_by_index
+
+  security_group_id = aws_security_group.this.id
+  cidr_ipv4         = each.value
+  ip_protocol       = "tcp"
+  from_port         = var.listener_port
+  to_port           = var.listener_port
 
   tags = var.tags
 }

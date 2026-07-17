@@ -3,7 +3,7 @@
 Estrutura Kubernetes do ambiente `lab`.
 
 - [components/new-relic-otel-collector/values.lab.yaml](components/new-relic-otel-collector/values.lab.yaml) define os valores Helm do New Relic OpenTelemetry Collector do ambiente `lab`.
-- [components/mailhog/](components/mailhog/) mantém o MailHog usado pelos fluxos de notificação em laboratório.
+- [components/mailhog/](components/mailhog/) mantém o MailHog usado pelos fluxos de notificação em laboratório. O Service SMTP usa o NodePort `31025`; o Terraform do `lab` publica esse destino exclusivamente na VPC pelo NLB interno `${cluster_name}-mailhog-smtp`, descoberto pelo deploy da `notificacao-lambda`.
 - [overlays/lab/](overlays/lab/) renderiza os componentes compartilhados do cluster que não dependem de instalação Helm.
 
 O New Relic OpenTelemetry Collector não é referenciado pelo overlay Kustomize porque sua instalação canônica usa o chart Helm `newrelic/nr-k8s-otel-collector`. Use [New Relic OpenTelemetry Collector no EKS lab](../docs/new-relic-otel-collector.md) e [scripts/manual/install-new-relic-otel-collector.sh](../scripts/manual/install-new-relic-otel-collector.sh) para instalar ou atualizar o release.

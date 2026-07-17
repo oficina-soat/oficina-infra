@@ -1,5 +1,9 @@
 data "aws_caller_identity" "current" {}
 
+data "aws_vpc" "selected" {
+  id = local.resolved_vpc_id
+}
+
 locals {
   azs          = length(var.azs) > 0 ? slice(var.azs, 0, 2) : ["${var.region}a", "${var.region}b"]
   input_vpc_id = var.vpc_id != null && trimspace(var.vpc_id) != "" ? var.vpc_id : null
@@ -419,6 +423,22 @@ module "microservice_private_nlb" {
   target_node_port                  = var.microservice_node_ports[each.key]
   target_autoscaling_group_name     = module.eks[0].node_group_autoscaling_group_name
   allowed_source_security_group_ids = local.api_gateway_vpc_link_security_group_ids
+  target_security_group_ids         = [module.eks[0].cluster_security_group_id]
+  tags                              = local.default_tags
+}
+
+module "mailhog_smtp_private_nlb" {
+  count  = var.create_eks ? 1 : 0
+  source = "../../modules/internal_nodeport_nlb"
+
+  name                              = substr("${var.cluster_name}-mailhog-smtp", 0, 32)
+  vpc_id                            = local.resolved_vpc_id
+  subnet_ids                        = local.resolved_subnet_ids
+  listener_port                     = 1025
+  target_node_port                  = 31025
+  target_autoscaling_group_name     = module.eks[0].node_group_autoscaling_group_name
+  allowed_source_security_group_ids = []
+  allowed_source_cidr_blocks        = [data.aws_vpc.selected.cidr_block]
   target_security_group_ids         = [module.eks[0].cluster_security_group_id]
   tags                              = local.default_tags
 }
