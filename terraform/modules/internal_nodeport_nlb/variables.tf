@@ -33,6 +33,12 @@ variable "allowed_source_security_group_ids" {
   description = "Security groups autorizados a acessar o listener do NLB."
 }
 
+variable "allowed_source_cidr_blocks" {
+  type        = list(string)
+  description = "Blocos CIDR autorizados a acessar o listener do NLB."
+  default     = []
+}
+
 variable "target_security_group_ids" {
   type        = list(string)
   description = "Security groups dos nodes que receberao entrada do NLB no NodePort."
