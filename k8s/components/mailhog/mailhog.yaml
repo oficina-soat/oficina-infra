@@ -19,6 +19,9 @@ spec:
       containers:
         - name: mailhog
           image: mailhog/mailhog:v1.0.1
+          env:
+            - name: MH_UI_WEB_PATH
+              value: mailhog
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 1025
