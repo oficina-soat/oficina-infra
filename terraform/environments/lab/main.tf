@@ -57,6 +57,8 @@ locals {
     "GET /api/v1/usuarios/{usuarioId}"                            = "oficina-os-service"
     "PUT /api/v1/usuarios/{usuarioId}"                            = "oficina-os-service"
     "DELETE /api/v1/usuarios/{usuarioId}"                         = "oficina-os-service"
+    "POST /api/v1/usuarios/{usuarioId}/bloqueio"                  = "oficina-os-service"
+    "POST /api/v1/usuarios/{usuarioId}/reativacao"                = "oficina-os-service"
     "POST /api/v1/clientes"                                       = "oficina-os-service"
     "GET /api/v1/clientes"                                        = "oficina-os-service"
     "GET /api/v1/clientes/{clienteId}"                            = "oficina-os-service"
