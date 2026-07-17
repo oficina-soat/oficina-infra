@@ -391,6 +391,13 @@ resource "aws_security_group" "microservices_api_gateway_vpc_link" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # A exclusao do VPC Link retorna antes de o API Gateway liberar todas as
+  # ENIs gerenciadas. O timeout ampliado permite que o provider repita a
+  # remocao do security group durante essa janela de consistencia eventual.
+  timeouts {
+    delete = "45m"
+  }
+
   tags = merge(local.default_tags, {
     Name = "${local.api_gateway_name}-microservices-vpc-link"
   })
