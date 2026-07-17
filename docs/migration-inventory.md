@@ -16,7 +16,7 @@ Este inventário registra a cópia controlada de artefatos de `oficina-infra-db`
 | `oficina-infra-k8s/k8s/components/mailhog` | [k8s/components/mailhog/](../k8s/components/mailhog/) | Mantido como componente compartilhado de laboratório para notificações. |
 | Workflows e scripts dos repositórios legados | [.github/workflows/](../.github/workflows/) e [scripts/actions/](../scripts/actions/) | Recriados de forma enxuta para state unificado `oficina/lab/infra/terraform.tfstate`, sem disparos para repositórios legados. |
 
-## Criados para a Fase 4
+## Criados para a arquitetura atual
 
 | Destino | Descrição |
 |---|---|

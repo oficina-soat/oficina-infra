@@ -119,7 +119,7 @@ export OFICINA_DYNAMODB_TABLE_PREFIX=oficina-execution-lab
 
 O bootstrap cria tópicos, filas de consumidores e DLQs conforme o contrato de mensageria da plataforma.
 
-Nos logs, o script mostra o nome lógico do contrato e o nome físico local. Como SNS/SQS aceitam apenas um subconjunto de caracteres no nome do recurso, o ambiente local troca `.` por `-` ao criar tópicos e filas. As assinaturas usam `RawMessageDelivery=true`, mantendo no SQS o envelope de domínio publicado pelo produtor, sem envelope adicional do SNS. A materialização definitiva em AWS/Terraform fica nos módulos de infraestrutura da Fase 4.
+Nos logs, o script mostra o nome lógico do contrato e o nome físico local. Como SNS/SQS aceitam apenas um subconjunto de caracteres no nome do recurso, o ambiente local troca `.` por `-` ao criar tópicos e filas. As assinaturas usam `RawMessageDelivery=true`, mantendo no SQS o envelope de domínio publicado pelo produtor, sem envelope adicional do SNS. A materialização definitiva em AWS/Terraform fica nos módulos canônicos de infraestrutura.
 
 ## Proteção contra configuração inválida
 

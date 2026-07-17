@@ -1,6 +1,6 @@
 # New Relic OpenTelemetry Collector no EKS lab
 
-O backend canônico de observabilidade da Fase 4 é o New Relic. No cluster `eks-lab`, a coleta deve ser feita pelo New Relic OpenTelemetry Collector instalado via Helm, com logs de pods, métricas Kubernetes/Prometheus e traces via OTLP/gRPC.
+O backend canônico de observabilidade é o New Relic. No cluster `eks-lab`, a coleta deve ser feita pelo New Relic OpenTelemetry Collector instalado via Helm, com logs de pods, métricas Kubernetes/Prometheus e traces via OTLP/gRPC.
 
 O collector roda dentro do cluster, mas a conta New Relic e a license key continuam externas. A chave não deve ser versionada neste repositório; ela deve ser informada por secret do GitHub ou variável local no momento do deploy.
 
@@ -110,4 +110,4 @@ FROM Span SELECT count(*) WHERE service.namespace = 'oficina' SINCE 30 minutes a
 FROM Log SELECT count(*) WHERE service.namespace = 'oficina' AND domainEventType IS NOT NULL SINCE 30 minutes ago FACET service.name, domainEventType
 ```
 
-As evidências finais de logs, métricas, traces, dashboards e alertas devem ser registradas no [checklist final da Fase 4](../../oficina-platform/docs/delivery/phase-4-delivery-checklist.md).
+As evidências finais de logs, métricas, traces, dashboards e alertas devem ser registradas no [checklist final de entrega](../../oficina-platform/docs/delivery/phase-4-delivery-checklist.md).
