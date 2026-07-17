@@ -115,9 +115,7 @@ locals {
     "GET /api/v1/ordens-servico/{ordemServicoId}/execucao"        = "oficina-execution-service"
     "POST /api/v1/execucoes/{execucaoId}/diagnostico/inicio"      = "oficina-execution-service"
     "POST /api/v1/execucoes/{execucaoId}/diagnostico/conclusao"   = "oficina-execution-service"
-    "POST /api/v1/execucoes/{execucaoId}/reparo/inicio"           = "oficina-execution-service"
     "POST /api/v1/execucoes/{execucaoId}/reparo/conclusao"        = "oficina-execution-service"
-    "POST /api/v1/execucoes/{execucaoId}/cancelamento"            = "oficina-execution-service"
     "GET /api/v1/dashboard/execucao"                              = "oficina-execution-service"
   }
   microservice_public_api_gateway_http_routes = local.expose_microservices_api_gateway ? {
@@ -189,7 +187,7 @@ locals {
       event_type = "orcamentoRecusado"
       topic      = "oficina.billing.orcamento-recusado"
       producer   = "oficina-billing-service"
-      consumers  = ["oficina-os-service"]
+      consumers  = ["oficina-os-service", "oficina-execution-service"]
     }
     execucaoIniciada = {
       event_type = "execucaoIniciada"
