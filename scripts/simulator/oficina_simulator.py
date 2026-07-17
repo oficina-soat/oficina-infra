@@ -24,7 +24,8 @@ PROFILES = {
         "chegada_cliente": 42,
         "consulta_os": 20,
         "catalogo_estoque": 13,
-        "orcamento_recusado": 8,
+        "orcamento_os_inexistente": 5,
+        "chave_idempotente_divergente": 3,
         "retry_idempotente": 7,
         "payload_invalido": 5,
         "operacao_nao_autorizada": 3,
@@ -34,7 +35,8 @@ PROFILES = {
         "chegada_cliente": 50,
         "consulta_os": 22,
         "catalogo_estoque": 12,
-        "orcamento_recusado": 5,
+        "orcamento_os_inexistente": 3,
+        "chave_idempotente_divergente": 2,
         "retry_idempotente": 5,
         "payload_invalido": 3,
         "operacao_nao_autorizada": 2,
@@ -44,7 +46,8 @@ PROFILES = {
         "chegada_cliente": 15,
         "consulta_os": 10,
         "catalogo_estoque": 10,
-        "orcamento_recusado": 20,
+        "orcamento_os_inexistente": 12,
+        "chave_idempotente_divergente": 8,
         "retry_idempotente": 15,
         "payload_invalido": 15,
         "operacao_nao_autorizada": 10,
@@ -56,7 +59,8 @@ NARRATIVES = {
     "chegada_cliente": "Tem um cliente com um carro chegando; vamos iniciar o atendimento",
     "consulta_os": "A equipe quer conferir a fila atual de ordens de serviço",
     "catalogo_estoque": "Chegou uma peça sintética; vamos cadastrá-la no catálogo",
-    "orcamento_recusado": "O cliente decidiu recusar um orçamento de teste",
+    "orcamento_os_inexistente": "Vamos confirmar que não se cria orçamento para uma OS inexistente",
+    "chave_idempotente_divergente": "Vamos confirmar que a mesma chave não aceita outra operação",
     "retry_idempotente": "A conexão oscilou; vamos repetir a solicitação com a mesma chave",
     "payload_invalido": "Vamos confirmar que um cadastro inválido é rejeitado de forma controlada",
     "operacao_nao_autorizada": "Vamos confirmar que uma chamada sem credencial é bloqueada",
@@ -192,8 +196,15 @@ class Simulator:
             return [RequestSpec("POST", "/api/v1/pecas", {
                 "nome": f"Peça Sintética {marker}", "codigo": marker, "valorUnitario": 1.0,
             }, (201, 409), idempotency_key=key)]
-        if scenario == "orcamento_recusado":
+        if scenario == "orcamento_os_inexistente":
             return [RequestSpec("POST", "/api/v1/orcamentos", {"ordemServicoId": fake_os}, (404,), idempotency_key=key)]
+        if scenario == "chave_idempotente_divergente":
+            first = {"nome": f"Cliente Idempotente {marker}",
+                     "documento": synthetic_cpf(self.config.seed + 3, sequence),
+                     "email": f"idempotente-{self.config.seed}-{sequence}@example.invalid"}
+            second = dict(first, nome=f"Cliente Divergente {marker}")
+            return [RequestSpec("POST", "/api/v1/clientes", first, (201,), idempotency_key=key),
+                    RequestSpec("POST", "/api/v1/clientes", second, (409,), idempotency_key=key)]
         if scenario == "retry_idempotente":
             body = {"nome": f"Cliente Retry {marker}", "documento": synthetic_cpf(self.config.seed + 1, sequence),
                     "email": f"retry-{self.config.seed}-{sequence}@example.invalid"}
@@ -231,7 +242,17 @@ class Simulator:
                 "clienteId": client_id, "veiculoId": vehicle_id,
                 "descricaoProblema": f"Atendimento sintético SIM-{self.config.seed}-{sequence}",
             }, (201,), idempotency_key=synthetic_uuid(self.config.seed, sequence, "os-key")), sequence)
-            self.orders.append(self.response_id(order, "ordemServicoId", sequence))
+            order_id = self.response_id(order, "ordemServicoId", sequence)
+            self.orders.append(order_id)
+            _, order_view = self.request("capabilities_os", RequestSpec(
+                "GET", f"/api/v1/ordens-servico/{order_id}", expected=(200,)), sequence)
+            if isinstance(order_view, dict) and "INICIAR_EXECUCAO" in order_view.get("acoesPermitidas", []):
+                self.results[-1].classification = "regression"
+                self.results[-1].detail += " (INICIAR_EXECUCAO exposto indevidamente)"
+            self.request("transicao_direta_bloqueada", RequestSpec(
+                "PATCH", f"/api/v1/ordens-servico/{order_id}/estado",
+                {"estado": "EM_EXECUCAO", "motivo": "Tentativa sintética de bypass da aprovação"},
+                (409,), idempotency_key=synthetic_uuid(self.config.seed, sequence, "direct-execution")), sequence)
             return
         if scenario == "catalogo_estoque":
             _, part = self.request(scenario, specs[0], sequence)
@@ -243,15 +264,6 @@ class Simulator:
                 "pecaId": part_id, "ordemServicoId": synthetic_uuid(self.config.seed, sequence, "stock-os"),
                 "quantidade": 999999, "motivo": "Falha controlada: estoque insuficiente",
             }, (409, 422), idempotency_key=synthetic_uuid(self.config.seed, sequence, "stock-fail")), sequence)
-            return
-        if scenario == "orcamento_recusado" and self.orders:
-            _, budget = self.request(scenario, RequestSpec("POST", "/api/v1/orcamentos", {
-                "ordemServicoId": self.orders[-1],
-            }, (201,), idempotency_key=synthetic_uuid(self.config.seed, sequence, "budget")), sequence)
-            budget_id = self.response_id(budget, "orcamentoId", sequence)
-            self.request(scenario, RequestSpec("POST", f"/api/v1/orcamentos/{budget_id}/recusa", {
-                "motivo": "Recusa sintética controlada",
-            }, (200,), idempotency_key=synthetic_uuid(self.config.seed, sequence, "budget-refusal")), sequence)
             return
         if scenario == "usuario_operacional":
             status, user = self.request(scenario, specs[0], sequence)

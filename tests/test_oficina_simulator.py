@@ -35,8 +35,20 @@ class SimulatorTest(unittest.TestCase):
     def test_customer_arrival_creates_client_vehicle_and_order(self):
         simulator = Simulator(config(), output=lambda _: None)
         simulator.execute_scenario("chegada_cliente", 1)
-        self.assertEqual(3, len(simulator.results))
+        self.assertEqual(5, len(simulator.results))
+        self.assertEqual(["chegada_cliente", "chegada_cliente", "chegada_cliente",
+                          "capabilities_os", "transicao_direta_bloqueada"],
+                         [result.scenario for result in simulator.results])
+        self.assertEqual("expected_rejection", simulator.results[-1].classification)
         self.assertEqual(1, len(simulator.orders))
+
+    def test_divergent_idempotency_key_is_expected_conflict(self):
+        simulator = Simulator(config(), output=lambda _: None)
+        simulator.execute_scenario("chave_idempotente_divergente", 1)
+        self.assertNotEqual(simulator.specs_for("chave_idempotente_divergente", 1)[0].body,
+                            simulator.specs_for("chave_idempotente_divergente", 1)[1].body)
+        self.assertEqual(["approved", "expected_rejection"],
+                         [result.classification for result in simulator.results])
 
     def test_vehicle_plate_varies_with_seed(self):
         first = Simulator(config(seed=3), output=lambda _: None)

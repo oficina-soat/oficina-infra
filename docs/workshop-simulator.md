@@ -27,7 +27,9 @@ O token nunca aparece no console. `--max-events` limita o volume, enquanto `--ma
 - `pico`: aumenta o peso dos fluxos predominantes;
 - `falhas`: aumenta falhas controladas e retries para diagnóstico.
 
-O catálogo inclui cliente → veículo → OS, consulta da fila de OS, peça → entrada → reserva com estoque insuficiente, orçamento recusado quando há uma OS criada na sessão, replay idempotente, payload inválido, chamada sem autorização e usuário operacional com bloqueio/reativação. A combinação de `profile` e `seed` gera sempre o mesmo plano.
+O catálogo inclui cliente → veículo → OS, consulta das capacidades da OS recém-criada, bloqueio da tentativa de iniciar execução diretamente, consulta da fila de OS, peça → entrada → reserva com estoque insuficiente, criação de orçamento para OS inexistente, replay idempotente, conflito quando a mesma chave idempotente recebe outro payload, payload inválido, chamada sem autorização e usuário operacional com bloqueio/reativação. A combinação de `profile` e `seed` gera sempre o mesmo plano.
+
+A recusa autenticada criada diretamente pelo simulador foi removida: o fluxo canônico atual gera o orçamento após o diagnóstico e a decisão do cliente ocorre pelos links públicos de uso único. Aprovação, recusa, expiração e reuso desses links dependem da captura segura da mensagem entregue e permanecem no roteiro de homologação do lab, não neste gerador genérico de tráfego HTTP. Eventos fora de ordem continuam cobertos nos testes de integração dos serviços, pois não devem ser publicados pela API pública.
 
 Dados mutáveis recebem `SIM-<seed>-<sequência>` no nome, código, descrição ou e-mail com domínio reservado `example.invalid`. Com `--cleanup`, somente usuários criados pela própria sessão são inativados; clientes, veículos, OS, peças e movimentos são preservados porque seus contratos não oferecem exclusão segura. O simulador nunca remove dados preexistentes.
 
