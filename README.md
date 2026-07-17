@@ -92,7 +92,7 @@ As rotas públicas e o fluxo interno estão detalhados em [API Gateway e rotas p
 
 ## RDS PostgreSQL compartilhado
 
-O primeiro artefato provisionável deste repositório é o RDS PostgreSQL compartilhado da Fase 4:
+O primeiro artefato provisionável deste repositório é o RDS PostgreSQL compartilhado:
 
 ```text
 oficina-postgres-lab
@@ -105,14 +105,14 @@ Documentação operacional: [RDS PostgreSQL compartilhado](docs/rds-postgresql.m
 
 ## DynamoDB e mensageria
 
-O Terraform do ambiente `lab` provisiona as tabelas DynamoDB do `oficina-execution-service` e a mensageria SNS/SQS da Fase 4:
+O Terraform do ambiente `lab` provisiona as tabelas DynamoDB do `oficina-execution-service` e a mensageria SNS/SQS da arquitetura distribuída:
 
 - tabelas `oficina-execution-lab-catalogo`, `oficina-execution-lab-estoque`, `oficina-execution-lab-execucoes`, `oficina-execution-lab-outbox` e `oficina-execution-lab-idempotencia`;
 - tópicos SNS canônicos convertidos para nomes físicos com hífen, por exemplo `oficina.execution.execucao-finalizada` como `oficina-execution-execucao-finalizada`;
 - filas SQS por consumidor, DLQs por tópico e assinaturas com `RawMessageDelivery=true`;
 - políticas IAM gerenciadas separadas para publicação, consumo e acesso DynamoDB.
 
-Documentação operacional: [DynamoDB e mensageria da Fase 4](docs/dynamodb-messaging.md).
+Documentação operacional: [DynamoDB e mensageria](docs/dynamodb-messaging.md).
 
 ## Ambiente local integrado
 
@@ -231,7 +231,7 @@ Variáveis mínimas esperadas:
 - `OFICINA_AUTH_ISSUER`, `OFICINA_AUTH_JWKS_URI`, `API_GATEWAY_NAME`, `JWT_SECRET_NAME` e `K8S_JWT_SECRET_NAME`, opcionais para customizar a integração JWT dos microsserviços
 - `WAIT_MICROSERVICE_ROLLOUT=true`, opcional para aguardar `rollout status` dos Deployments aplicados
 - `CREATE_EXECUTION_DYNAMODB=false`, quando as tabelas DynamoDB não devem ser criadas pelo workflow
-- `CREATE_DOMAIN_MESSAGING=false`, quando SNS/SQS da Fase 4 não devem ser criados pelo workflow
+- `CREATE_DOMAIN_MESSAGING=false`, quando SNS/SQS de domínio não devem ser criados pelo workflow
 - `ATTACH_AUTH_SYNC_LAMBDA_CONSUMER_POLICY=false` no VocLabs, pois a identidade do laboratório não pode alterar attachments e a `LabRole` já permite consumo SQS em `us-east-1`; habilite somente em contas cuja role exija a policy gerenciada e o executor possua `iam:AttachRolePolicy`
 - `AUTH_SYNC_LAMBDA_ROLE_NAME=LabRole`, nome da role usada no deploy da `oficina-auth-sync-lambda`
 - `CREATE_AUTH_SYNC_LAMBDA=true`, para declarar pelo Terraform a função de projeção e seus event source mappings inicialmente desabilitados

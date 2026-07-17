@@ -1,6 +1,6 @@
-# DynamoDB e mensageria da Fase 4
+# DynamoDB e mensageria
 
-Este documento descreve a materialização executável, em Terraform, dos contratos definidos no `oficina-platform` para DynamoDB do `oficina-execution-service` e mensageria SNS/SQS da Fase 4.
+Este documento descreve a materialização executável, em Terraform, dos contratos definidos no `oficina-platform` para DynamoDB do `oficina-execution-service` e mensageria SNS/SQS da arquitetura distribuída.
 
 Referências normativas:
 
