@@ -123,3 +123,6 @@ if [[ "${INSTALL_NEW_RELIC_OTEL_COLLECTOR_RESOLVED}" == "true" ]]; then
   log "Instalando New Relic OpenTelemetry Collector"
   SKIP_KUBECONFIG_UPDATE="${KUBECONFIG_UPDATED}" "${REPO_ROOT}/scripts/manual/install-new-relic-otel-collector.sh"
 fi
+
+log "Restaurando dependencias opcionais da UI quando seu state ja existir"
+"${SCRIPT_DIR}/ci-ui-workload-lifecycle.sh" resume

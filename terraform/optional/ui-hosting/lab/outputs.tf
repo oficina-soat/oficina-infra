@@ -5,7 +5,7 @@ output "ecr_repository_url" {
 
 output "eks_cluster_name" {
   description = "Cluster compartilhado onde a UI opcional é executada."
-  value       = local.main.eks_cluster_name
+  value       = try(local.main.eks_cluster_name, null)
 }
 
 output "ui_url" {
@@ -15,7 +15,7 @@ output "ui_url" {
 
 output "route_key" {
   description = "Rota de fallback exclusiva da UI no HTTP API."
-  value       = aws_apigatewayv2_route.ui.route_key
+  value       = try(aws_apigatewayv2_route.ui[0].route_key, null)
 }
 
 output "ui_observability_endpoint" {

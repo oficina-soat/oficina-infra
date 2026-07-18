@@ -21,19 +21,36 @@ locals {
   })
 }
 
+moved {
+  from = module.private_nlb
+  to   = module.private_nlb[0]
+}
+
+moved {
+  from = aws_apigatewayv2_integration.ui
+  to   = aws_apigatewayv2_integration.ui[0]
+}
+
+moved {
+  from = aws_apigatewayv2_route.ui
+  to   = aws_apigatewayv2_route.ui[0]
+}
+
 check "shared_infrastructure_outputs" {
   assert {
     condition = alltrue([
       try(local.main.vpc_id, null) != null,
-      try(length(local.main.subnet_ids), 0) > 0,
-      try(local.main.eks_cluster_name, null) != null,
-      try(local.main.eks_cluster_security_group_id, null) != null,
-      try(local.main.eks_node_group_autoscaling_group_name, null) != null,
       try(local.main.api_gateway_id, null) != null,
-      try(local.main.api_gateway_vpc_link_id, null) != null,
-      try(length(local.main.api_gateway_vpc_link_security_group_ids), 0) > 0,
+      !var.create_ui_workload || alltrue([
+        try(length(local.main.subnet_ids), 0) > 0,
+        try(local.main.eks_cluster_name, null) != null,
+        try(local.main.eks_cluster_security_group_id, null) != null,
+        try(local.main.eks_node_group_autoscaling_group_name, null) != null,
+        try(local.main.api_gateway_vpc_link_id, null) != null,
+        try(length(local.main.api_gateway_vpc_link_security_group_ids), 0) > 0,
+      ]),
     ])
-    error_message = "O state principal deve publicar EKS, VPC, HTTP API e VPC Link antes da stack opcional da UI."
+    error_message = "O state principal deve publicar VPC e HTTP API; com create_ui_workload=true, tambem deve publicar EKS e VPC Link."
   }
 }
 
@@ -45,6 +62,7 @@ module "ecr" {
 }
 
 module "private_nlb" {
+  count  = var.create_ui_workload ? 1 : 0
   source = "../../../modules/internal_nodeport_nlb"
 
   name                              = substr("${var.cluster_name}-ui", 0, 32)
@@ -59,10 +77,11 @@ module "private_nlb" {
 }
 
 resource "aws_apigatewayv2_integration" "ui" {
+  count                = var.create_ui_workload ? 1 : 0
   api_id               = local.main.api_gateway_id
   integration_type     = "HTTP_PROXY"
   integration_method   = "ANY"
-  integration_uri      = module.private_nlb.listener_arn
+  integration_uri      = module.private_nlb[0].listener_arn
   connection_type      = "VPC_LINK"
   connection_id        = local.main.api_gateway_vpc_link_id
   timeout_milliseconds = 30000
@@ -70,10 +89,11 @@ resource "aws_apigatewayv2_integration" "ui" {
 }
 
 resource "aws_apigatewayv2_route" "ui" {
+  count              = var.create_ui_workload ? 1 : 0
   api_id             = local.main.api_gateway_id
   route_key          = "$default"
   authorization_type = "NONE"
-  target             = "integrations/${aws_apigatewayv2_integration.ui.id}"
+  target             = "integrations/${aws_apigatewayv2_integration.ui[0].id}"
 }
 
 data "archive_file" "ui_telemetry" {

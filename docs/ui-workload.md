@@ -37,4 +37,6 @@ O workflow `UI Workload Infrastructure Lab` permite `plan`, `apply` ou `destroy`
 
 O deploy da UI também aplica essa composição de forma idempotente antes de publicar a imagem. Ele deriva automaticamente o bucket e a região dos states. Não há variáveis funcionais obrigatórias além das credenciais AWS temporárias.
 
+Os workflows `Suspend Lab` e `Resume Lab` coordenam o ciclo de vida entre os dois states. Antes de remover o EKS e o VPC Link, o suspend aplica `create_ui_workload=false` na composição opcional, removendo somente rota `$default`, integração privada e NLB. O ECR e a telemetria permanecem ativos. Depois de recriar o plano computacional, o resume aplica `create_ui_workload=true`. Quando o state opcional ainda não existe, ambos ignoram essa etapa para preservar o caráter opcional da UI.
+
 Ao migrar da tentativa anterior de S3/CloudFront, o primeiro apply remove do state opcional o bucket e a configuração de website que não chegaram a publicar a aplicação por limitações da role `voclabs`.
