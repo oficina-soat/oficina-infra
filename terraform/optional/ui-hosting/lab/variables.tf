@@ -16,6 +16,12 @@ variable "cluster_name" {
   default     = "eks-lab"
 }
 
+variable "create_ui_workload" {
+  description = "Cria NLB, integracao privada e rota da UI dependentes do EKS e do VPC Link."
+  type        = bool
+  default     = true
+}
+
 variable "main_state_bucket" {
   description = "Bucket do state principal do lab."
   type        = string
