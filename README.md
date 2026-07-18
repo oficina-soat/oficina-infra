@@ -165,6 +165,8 @@ O [simulador de operação da oficina](docs/workshop-simulator.md) gera tráfego
 scripts/manual/simulate-workshop.py --dry-run --profile cotidiano --duration 2 --intensity 5 --seed 20260715
 ```
 
+O [monitor de associação entre OS e execução](docs/os-execution-reconciliation.md) detecta divergências sem alterar estado de negócio e permite recuperação idempotente somente para OS ainda em `RECEBIDA`.
+
 Arquivos principais:
 
 - [terraform/environments/lab/](terraform/environments/lab/)
@@ -182,6 +184,7 @@ Arquivos principais:
 - [scripts/manual/bootstrap-service-databases-k8s.sh](scripts/manual/bootstrap-service-databases-k8s.sh)
 - [scripts/manual/start-port-forwards.sh](scripts/manual/start-port-forwards.sh)
 - [scripts/manual/install-new-relic-otel-collector.sh](scripts/manual/install-new-relic-otel-collector.sh)
+- [scripts/manual/reconcile-os-executions.sh](scripts/manual/reconcile-os-executions.sh)
 - [scripts/actions/ci-deploy.sh](scripts/actions/ci-deploy.sh)
 
 ## Validação local
