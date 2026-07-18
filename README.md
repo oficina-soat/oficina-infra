@@ -165,7 +165,7 @@ O [simulador de operação da oficina](docs/workshop-simulator.md) gera tráfego
 scripts/manual/simulate-workshop.py --dry-run --profile cotidiano --duration 2 --intensity 5 --seed 20260715
 ```
 
-O [monitor de associação entre OS e execução](docs/os-execution-reconciliation.md) detecta divergências sem alterar estado de negócio e permite recuperação idempotente somente para OS ainda em `RECEBIDA`.
+O [monitor de associação entre OS e execução](docs/os-execution-reconciliation.md) detecta divergências sem alterar estado de negócio, permite recuperação idempotente de OS em `RECEBIDA` e documenta o backfill explicitamente aprovado para registros históricos avançados do `lab`.
 
 Arquivos principais:
 
