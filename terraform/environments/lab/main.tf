@@ -93,6 +93,8 @@ locals {
     "POST /api/v1/pagamentos/{pagamentoId}/confirmacao"           = "oficina-billing-service"
     "POST /api/v1/pagamentos/{pagamentoId}/recusa"                = "oficina-billing-service"
     "POST /api/v1/pagamentos/{pagamentoId}/cancelamento"          = "oficina-billing-service"
+    "POST /api/v1/pagamentos/{pagamentoId}/reconciliacao"         = "oficina-billing-service"
+    "POST /api/v1/integracoes/mercado-pago/webhooks"              = "oficina-billing-service"
     "GET /api/v1/dashboard/faturamento"                           = "oficina-billing-service"
     "POST /api/v1/servicos"                                       = "oficina-execution-service"
     "GET /api/v1/servicos"                                        = "oficina-execution-service"

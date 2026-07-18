@@ -247,9 +247,12 @@ O script `ci-terraform.sh` materializa os valores `TF_VAR_*` em um `-var-file` t
 Integração Mercado Pago do `oficina-billing-service`:
 
 - secret `OFICINA_MERCADO_PAGO_ACCESS_TOKEN`, obrigatório apenas quando a integração estiver habilitada
+- secret `OFICINA_MERCADO_PAGO_WEBHOOK_SECRET`, obrigatório quando a integração estiver habilitada e distinto do access token
 - variável `OFICINA_MERCADO_PAGO_ENABLED=true`, para habilitar a integração no ambiente `lab`
 - variável opcional `OFICINA_MERCADO_PAGO_PAYER_EMAIL`, apenas quando o teste exigir sobrescrever o e-mail pagador default
 - variável opcional `OFICINA_MERCADO_PAGO_API_URL`, apenas quando for necessário sobrescrever `https://api.mercadopago.com`
+
+O API Gateway encaminha anonimamente apenas `POST /api/v1/integracoes/mercado-pago/webhooks`; a assinatura HMAC é validada no Billing antes de qualquer consulta ao provedor. A reconciliação operacional em `POST /api/v1/pagamentos/{pagamentoId}/reconciliacao` continua protegida pelo JWT do serviço. Provisionamento, alertas e resposta a incidentes estão no [runbook da integração Mercado Pago](docs/mercado-pago-payment-runbook.md).
 
 Comando local equivalente:
 
