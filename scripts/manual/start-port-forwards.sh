@@ -432,7 +432,7 @@ if [[ "${FORWARD_MAILHOG}" == "true" ]]; then
 		"mailhog" \
 		"8025:8025 1025:1025" \
 		"mailhog" \
-		"MailHog UI: http://localhost:8025 | SMTP: localhost:1025"
+		"MailHog UI: http://localhost:8025/mailhog/ | SMTP: localhost:1025"
 fi
 
 log "Encaminhamentos ativos"
