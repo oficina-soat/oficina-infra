@@ -24,6 +24,7 @@ K8S_JWT_SECRET_NAME="${K8S_JWT_SECRET_NAME:-oficina-jwt-keys}"
 BILLING_MERCADO_PAGO_K8S_SECRET_NAME="${BILLING_MERCADO_PAGO_K8S_SECRET_NAME:-oficina-billing-service-mercado-pago-env}"
 OFICINA_MERCADO_PAGO_ENABLED="${OFICINA_MERCADO_PAGO_ENABLED:-}"
 OFICINA_MERCADO_PAGO_ACCESS_TOKEN="${OFICINA_MERCADO_PAGO_ACCESS_TOKEN:-}"
+OFICINA_MERCADO_PAGO_WEBHOOK_SECRET="${OFICINA_MERCADO_PAGO_WEBHOOK_SECRET:-}"
 OFICINA_MERCADO_PAGO_API_URL="${OFICINA_MERCADO_PAGO_API_URL:-}"
 OFICINA_MERCADO_PAGO_PAYER_EMAIL="${OFICINA_MERCADO_PAGO_PAYER_EMAIL:-}"
 WAIT_MICROSERVICE_ROLLOUT="${WAIT_MICROSERVICE_ROLLOUT:-false}"
@@ -56,6 +57,7 @@ Variaveis suportadas:
   BILLING_MERCADO_PAGO_K8S_SECRET_NAME Secret Kubernetes com variaveis Mercado Pago. Default: oficina-billing-service-mercado-pago-env
   OFICINA_MERCADO_PAGO_ENABLED  true|false para habilitar integracao Mercado Pago no billing
   OFICINA_MERCADO_PAGO_ACCESS_TOKEN Access Token Mercado Pago. Obrigatorio quando enabled=true
+  OFICINA_MERCADO_PAGO_WEBHOOK_SECRET Secret de assinatura do webhook. Obrigatorio quando enabled=true
   OFICINA_MERCADO_PAGO_API_URL  URL da API Mercado Pago. Opcional; o servico possui default
   OFICINA_MERCADO_PAGO_PAYER_EMAIL Email pagador sandbox. Opcional; o servico possui default
   OFICINA_OS_SERVICE_IMAGE      Imagem completa opcional do oficina-os-service
@@ -189,6 +191,7 @@ create_postgres_runtime_secret() {
 mercado_pago_runtime_configured() {
   [[ -n "${OFICINA_MERCADO_PAGO_ENABLED}" ]] \
     || [[ -n "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}" ]] \
+    || [[ -n "${OFICINA_MERCADO_PAGO_WEBHOOK_SECRET}" ]] \
     || [[ -n "${OFICINA_MERCADO_PAGO_API_URL}" ]] \
     || [[ -n "${OFICINA_MERCADO_PAGO_PAYER_EMAIL}" ]]
 }
@@ -200,6 +203,7 @@ create_billing_mercado_pago_secret() {
 
   if [[ "${enabled}" == "true" ]]; then
     require_non_empty "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}" "OFICINA_MERCADO_PAGO_ACCESS_TOKEN"
+    require_non_empty "${OFICINA_MERCADO_PAGO_WEBHOOK_SECRET}" "OFICINA_MERCADO_PAGO_WEBHOOK_SECRET"
   elif ! mercado_pago_runtime_configured; then
     log "Mercado Pago nao configurado para o billing; secret ${BILLING_MERCADO_PAGO_K8S_SECRET_NAME} nao sera criado"
     return
@@ -211,6 +215,9 @@ create_billing_mercado_pago_secret() {
     printf 'OFICINA_MERCADO_PAGO_ENABLED=%s\n' "${enabled}"
     if [[ -n "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}" ]]; then
       printf 'OFICINA_MERCADO_PAGO_ACCESS_TOKEN=%s\n' "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}"
+    fi
+    if [[ -n "${OFICINA_MERCADO_PAGO_WEBHOOK_SECRET}" ]]; then
+      printf 'OFICINA_MERCADO_PAGO_WEBHOOK_SECRET=%s\n' "${OFICINA_MERCADO_PAGO_WEBHOOK_SECRET}"
     fi
     if [[ -n "${OFICINA_MERCADO_PAGO_API_URL}" ]]; then
       printf 'OFICINA_MERCADO_PAGO_API_URL=%s\n' "${OFICINA_MERCADO_PAGO_API_URL}"
