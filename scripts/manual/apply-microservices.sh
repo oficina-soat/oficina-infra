@@ -58,7 +58,7 @@ Variaveis suportadas:
   K8S_JWT_SECRET_NAME           Secret Kubernetes com publicKey.pem. Default: oficina-jwt-keys
   BILLING_MERCADO_PAGO_K8S_SECRET_NAME Secret Kubernetes com variaveis Mercado Pago. Default: oficina-billing-service-mercado-pago-env
   OFICINA_MERCADO_PAGO_ENABLED  true|false para habilitar integracao Mercado Pago no billing
-  OFICINA_MERCADO_PAGO_ACCESS_TOKEN Access Token Mercado Pago. Obrigatorio quando enabled=true
+  OFICINA_MERCADO_PAGO_ACCESS_TOKEN Access Token Mercado Pago. No modo orders do lab, use a credencial de teste APP_USR
   OFICINA_MERCADO_PAGO_WEBHOOK_SECRET Secret de assinatura do webhook. Obrigatorio quando enabled=true
   OFICINA_MERCADO_PAGO_API_URL  URL da API Mercado Pago. Opcional; o servico possui default
   OFICINA_MERCADO_PAGO_API_MODE orders|payments. Default: orders; payments existe apenas para rollback
@@ -214,8 +214,8 @@ mercado_pago_runtime_configured() {
     || [[ -n "${OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME}" ]]
 }
 
-create_billing_mercado_pago_secret() {
-  local api_mode enabled tmp_file
+validate_billing_mercado_pago_config() {
+  local api_mode enabled
 
   enabled="$(normalize_bool "${OFICINA_MERCADO_PAGO_ENABLED}" "false" "OFICINA_MERCADO_PAGO_ENABLED")"
   api_mode="$(normalize_mercado_pago_api_mode "${OFICINA_MERCADO_PAGO_API_MODE}")"
@@ -223,14 +223,28 @@ create_billing_mercado_pago_secret() {
   if [[ "${enabled}" == "true" ]]; then
     require_non_empty "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}" "OFICINA_MERCADO_PAGO_ACCESS_TOKEN"
     require_non_empty "${OFICINA_MERCADO_PAGO_WEBHOOK_SECRET}" "OFICINA_MERCADO_PAGO_WEBHOOK_SECRET"
-  elif ! mercado_pago_runtime_configured; then
-    log "Mercado Pago nao configurado para o billing; secret ${BILLING_MERCADO_PAGO_K8S_SECRET_NAME} nao sera criado"
-    return
+
+    if [[ "${api_mode}" == "orders" && "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN^^}" == TEST-* ]]; then
+      fail "OFICINA_MERCADO_PAGO_ACCESS_TOKEN deve usar a credencial de teste APP_USR da aplicacao no modo orders; credenciais TEST-* nao sao aceitas pela API Orders"
+    fi
   fi
 
   if [[ "${OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME^^}" == "APRO" \
       && "${OFICINA_MERCADO_PAGO_PAYER_EMAIL,,}" != "test_user_br@testuser.com" ]]; then
     fail "OFICINA_MERCADO_PAGO_PAYER_EMAIL deve ser test_user_br@testuser.com no cenario APRO"
+  fi
+}
+
+create_billing_mercado_pago_secret() {
+  local api_mode enabled tmp_file
+
+  validate_billing_mercado_pago_config
+  enabled="$(normalize_bool "${OFICINA_MERCADO_PAGO_ENABLED}" "false" "OFICINA_MERCADO_PAGO_ENABLED")"
+  api_mode="$(normalize_mercado_pago_api_mode "${OFICINA_MERCADO_PAGO_API_MODE}")"
+
+  if [[ "${enabled}" != "true" ]] && ! mercado_pago_runtime_configured; then
+    log "Mercado Pago nao configurado para o billing; secret ${BILLING_MERCADO_PAGO_K8S_SECRET_NAME} nao sera criado"
+    return
   fi
 
   tmp_file="$(mktemp)"
@@ -578,6 +592,10 @@ done
 if [[ ${#READY_SERVICES[@]} -eq 0 ]]; then
   apply_ready_manifests
   exit 0
+fi
+
+if service_is_ready "oficina-billing-service"; then
+  validate_billing_mercado_pago_config
 fi
 
 ensure_namespace

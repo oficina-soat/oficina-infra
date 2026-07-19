@@ -9,7 +9,7 @@ Este runbook cobre a criação e reconciliação de orders PIX pelo `oficina-bil
 Configure no executor do deploy, sem persistir os valores no Git:
 
 - `OFICINA_MERCADO_PAGO_ENABLED=true`;
-- `OFICINA_MERCADO_PAGO_ACCESS_TOKEN` com o token do ambiente correspondente;
+- `OFICINA_MERCADO_PAGO_ACCESS_TOKEN` com o Access Token de teste `APP_USR` da aplicação no `lab`, obtido em **Suas integrações > Dados da integração > Testes > Credenciais de teste**; a API Orders não aceita credenciais `TEST-*`;
 - `OFICINA_MERCADO_PAGO_WEBHOOK_SECRET` com o secret da aplicação no Mercado Pago, distinto do token;
 - `OFICINA_MERCADO_PAGO_API_MODE=orders`;
 - no `lab`, `OFICINA_MERCADO_PAGO_PAYER_EMAIL=test_user_br@testuser.com` e `OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME=APRO` para o cenário de aprovação automática;
@@ -25,7 +25,7 @@ No painel do Mercado Pago, configure o evento **Order (Mercado Pago)** para:
 https://<api-gateway>/api/v1/integracoes/mercado-pago/webhooks
 ```
 
-Durante a janela de compatibilidade, mantenha também o evento **Pagamentos** para cobranças `PAYMENT` ainda pendentes. Use credenciais e aplicação de teste no `lab`; produção deve usar aplicação, token e secret próprios e nunca deve receber `APRO`.
+Durante a janela de compatibilidade, mantenha também o evento **Pagamentos** para cobranças `PAYMENT` ainda pendentes. No `lab`, use exclusivamente as credenciais de teste `APP_USR` da aplicação para acessar o sandbox da API Orders; não use a conta nem gere transações reais de produção. Produção deve usar aplicação, token e secret próprios e nunca deve receber `APRO`. A [documentação de teste do PIX com Orders](https://www.mercadopago.com.br/developers/pt/docs/checkout-api-orders/integration-test/pix) define o prefixo esperado e os valores predefinidos do cenário.
 
 ## Sinais e alertas
 
@@ -42,7 +42,7 @@ Nunca use `pagamentoId`, `transacaoExternaId`, código PIX ou e-mail como tag de
 
 1. Confirme saúde do Billing em `/api/v1/status/ready`.
 2. Verifique erros agregados do webhook por código HTTP, sem inspecionar ou copiar assinatura e payload em evidências.
-3. Confirme conectividade do Billing com `https://api.mercadopago.com` e a presença das duas chaves no secret Kubernetes, exibindo somente seus nomes.
+3. Confirme conectividade do Billing com `https://api.mercadopago.com`, a presença das duas chaves no secret Kubernetes e que o access token do modo `orders` não possui prefixo `TEST-`, sem exibir seus valores.
 4. Para pagamento pendente, use a ação autenticada **Atualizar situação** na UI; ela consulta `GET /v1/orders/{id}` para `ORDER` e `GET /v1/payments/{id}` para referência legada `PAYMENT`.
 5. Se o provedor estiver indisponível, preserve o estado `CRIADO`, não confirme manualmente e aguarde recuperação.
 
