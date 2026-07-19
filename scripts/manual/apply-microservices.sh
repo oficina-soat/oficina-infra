@@ -182,6 +182,7 @@ apply_runtime_secret() {
   kubectl apply \
     --server-side \
     --field-manager=oficina-runtime-secrets \
+    --force-conflicts \
     -f -
   kubectl annotate secret "${k8s_secret_name}" \
     --namespace "${K8S_NAMESPACE}" \
