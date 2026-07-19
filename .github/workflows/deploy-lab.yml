@@ -140,6 +140,11 @@ jobs:
       WAIT_MICROSERVICE_ROLLOUT: ${{ vars.WAIT_MICROSERVICE_ROLLOUT || 'false' }}
       MICROSERVICE_ROLLOUT_TIMEOUT: ${{ vars.MICROSERVICE_ROLLOUT_TIMEOUT || '300s' }}
       MICROSERVICE_REPOSITORIES_ROOT: ${{ github.workspace }}/service-sources
+      UI_REPOSITORY_ROOT: ${{ github.workspace }}/ui-source/oficina-ui
+      RESTORE_UI_WORKLOAD: ${{ vars.RESTORE_UI_WORKLOAD || 'true' }}
+      RECONCILE_NOTIFICACAO_MAILHOG: ${{ vars.RECONCILE_NOTIFICACAO_MAILHOG || 'true' }}
+      NOTIFICACAO_LAMBDA_FUNCTION_NAME: ${{ vars.NOTIFICACAO_LAMBDA_FUNCTION_NAME || 'oficina-notificacao-lambda-lab' }}
+      NOTIFICACAO_MAILHOG_NLB_NAME: ${{ vars.NOTIFICACAO_MAILHOG_NLB_NAME }}
       INSTALL_NEW_RELIC_OTEL_COLLECTOR: ${{ vars.INSTALL_NEW_RELIC_OTEL_COLLECTOR || 'auto' }}
       NEW_RELIC_LICENSE_KEY: ${{ secrets.NEW_RELIC_LICENSE_KEY }}
       NEW_RELIC_NAMESPACE: ${{ vars.NEW_RELIC_NAMESPACE || 'newrelic' }}
@@ -173,6 +178,12 @@ jobs:
         with:
           repository: oficina-soat/oficina-execution-service
           path: service-sources/oficina-execution-service
+
+      - name: Checkout oficina-ui manifests
+        uses: actions/checkout@v6
+        with:
+          repository: oficina-soat/oficina-ui
+          path: ui-source/oficina-ui
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
