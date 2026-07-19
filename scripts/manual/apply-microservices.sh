@@ -176,6 +176,19 @@ ensure_namespace() {
   kubectl create namespace "${K8S_NAMESPACE}"
 }
 
+apply_runtime_secret() {
+  local k8s_secret_name="$1"
+
+  kubectl apply \
+    --server-side \
+    --field-manager=oficina-runtime-secrets \
+    -f -
+  kubectl annotate secret "${k8s_secret_name}" \
+    --namespace "${K8S_NAMESPACE}" \
+    kubectl.kubernetes.io/last-applied-configuration- \
+    >/dev/null 2>&1 || true
+}
+
 create_postgres_runtime_secret() {
   local aws_secret_name="$1"
   local k8s_secret_name="$2"
@@ -202,7 +215,7 @@ create_postgres_runtime_secret() {
     "--from-literal=JDBC_DATABASE_URL=jdbc:postgresql://${host}:${port}/${database}?sslmode=${DB_SSLMODE}" \
     "--from-literal=REACTIVE_DATABASE_URL=postgresql://${host}:${port}/${database}?sslmode=${DB_SSLMODE}" \
     --dry-run=client \
-    -o yaml | kubectl apply -f -
+    -o yaml | apply_runtime_secret "${k8s_secret_name}"
 }
 
 mercado_pago_runtime_configured() {
@@ -273,7 +286,7 @@ create_billing_mercado_pago_secret() {
     --namespace "${K8S_NAMESPACE}" \
     "--from-env-file=${tmp_file}" \
     --dry-run=client \
-    -o yaml | kubectl apply -f -; then
+    -o yaml | apply_runtime_secret "${BILLING_MERCADO_PAGO_K8S_SECRET_NAME}"; then
     rm -f "${tmp_file}"
     return 1
   fi
@@ -334,7 +347,7 @@ create_jwt_public_key_secret() {
     --namespace "${K8S_NAMESPACE}" \
     "--from-literal=publicKey.pem=${public_key}" \
     --dry-run=client \
-    -o yaml | kubectl apply -f -
+    -o yaml | apply_runtime_secret "${K8S_JWT_SECRET_NAME}"
 }
 
 latest_ecr_image() {
