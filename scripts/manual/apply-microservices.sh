@@ -26,7 +26,9 @@ OFICINA_MERCADO_PAGO_ENABLED="${OFICINA_MERCADO_PAGO_ENABLED:-}"
 OFICINA_MERCADO_PAGO_ACCESS_TOKEN="${OFICINA_MERCADO_PAGO_ACCESS_TOKEN:-}"
 OFICINA_MERCADO_PAGO_WEBHOOK_SECRET="${OFICINA_MERCADO_PAGO_WEBHOOK_SECRET:-}"
 OFICINA_MERCADO_PAGO_API_URL="${OFICINA_MERCADO_PAGO_API_URL:-}"
+OFICINA_MERCADO_PAGO_API_MODE="${OFICINA_MERCADO_PAGO_API_MODE:-orders}"
 OFICINA_MERCADO_PAGO_PAYER_EMAIL="${OFICINA_MERCADO_PAGO_PAYER_EMAIL:-}"
+OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME="${OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME:-}"
 WAIT_MICROSERVICE_ROLLOUT="${WAIT_MICROSERVICE_ROLLOUT:-false}"
 MICROSERVICE_ROLLOUT_TIMEOUT="${MICROSERVICE_ROLLOUT_TIMEOUT:-300s}"
 
@@ -59,7 +61,9 @@ Variaveis suportadas:
   OFICINA_MERCADO_PAGO_ACCESS_TOKEN Access Token Mercado Pago. Obrigatorio quando enabled=true
   OFICINA_MERCADO_PAGO_WEBHOOK_SECRET Secret de assinatura do webhook. Obrigatorio quando enabled=true
   OFICINA_MERCADO_PAGO_API_URL  URL da API Mercado Pago. Opcional; o servico possui default
+  OFICINA_MERCADO_PAGO_API_MODE orders|payments. Default: orders; payments existe apenas para rollback
   OFICINA_MERCADO_PAGO_PAYER_EMAIL Email pagador sandbox. Opcional; o servico possui default
+  OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME Nome pagador sandbox. APRO e exclusivo de lab/test
   OFICINA_OS_SERVICE_IMAGE      Imagem completa opcional do oficina-os-service
   OFICINA_BILLING_SERVICE_IMAGE Imagem completa opcional do oficina-billing-service
   OFICINA_EXECUTION_SERVICE_IMAGE Imagem completa opcional do oficina-execution-service
@@ -147,6 +151,19 @@ normalize_bool() {
   esac
 }
 
+normalize_mercado_pago_api_mode() {
+  local value="${1,,}"
+
+  case "${value}" in
+    orders|payments)
+      printf '%s' "${value}"
+      ;;
+    *)
+      fail "OFICINA_MERCADO_PAGO_API_MODE deve ser orders ou payments"
+      ;;
+  esac
+}
+
 escape_sed_replacement() {
   printf '%s' "$1" | sed 's/[&|\\]/\\&/g'
 }
@@ -193,13 +210,15 @@ mercado_pago_runtime_configured() {
     || [[ -n "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}" ]] \
     || [[ -n "${OFICINA_MERCADO_PAGO_WEBHOOK_SECRET}" ]] \
     || [[ -n "${OFICINA_MERCADO_PAGO_API_URL}" ]] \
-    || [[ -n "${OFICINA_MERCADO_PAGO_PAYER_EMAIL}" ]]
+    || [[ -n "${OFICINA_MERCADO_PAGO_PAYER_EMAIL}" ]] \
+    || [[ -n "${OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME}" ]]
 }
 
 create_billing_mercado_pago_secret() {
-  local enabled tmp_file
+  local api_mode enabled tmp_file
 
   enabled="$(normalize_bool "${OFICINA_MERCADO_PAGO_ENABLED}" "false" "OFICINA_MERCADO_PAGO_ENABLED")"
+  api_mode="$(normalize_mercado_pago_api_mode "${OFICINA_MERCADO_PAGO_API_MODE}")"
 
   if [[ "${enabled}" == "true" ]]; then
     require_non_empty "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}" "OFICINA_MERCADO_PAGO_ACCESS_TOKEN"
@@ -209,10 +228,16 @@ create_billing_mercado_pago_secret() {
     return
   fi
 
+  if [[ "${OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME^^}" == "APRO" \
+      && "${OFICINA_MERCADO_PAGO_PAYER_EMAIL,,}" != "test_user_br@testuser.com" ]]; then
+    fail "OFICINA_MERCADO_PAGO_PAYER_EMAIL deve ser test_user_br@testuser.com no cenario APRO"
+  fi
+
   tmp_file="$(mktemp)"
 
   {
     printf 'OFICINA_MERCADO_PAGO_ENABLED=%s\n' "${enabled}"
+    printf 'OFICINA_MERCADO_PAGO_API_MODE=%s\n' "${api_mode}"
     if [[ -n "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}" ]]; then
       printf 'OFICINA_MERCADO_PAGO_ACCESS_TOKEN=%s\n' "${OFICINA_MERCADO_PAGO_ACCESS_TOKEN}"
     fi
@@ -224,6 +249,9 @@ create_billing_mercado_pago_secret() {
     fi
     if [[ -n "${OFICINA_MERCADO_PAGO_PAYER_EMAIL}" ]]; then
       printf 'OFICINA_MERCADO_PAGO_PAYER_EMAIL=%s\n' "${OFICINA_MERCADO_PAGO_PAYER_EMAIL}"
+    fi
+    if [[ -n "${OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME}" ]]; then
+      printf 'OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME=%s\n' "${OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME}"
     fi
   } > "${tmp_file}"
 
