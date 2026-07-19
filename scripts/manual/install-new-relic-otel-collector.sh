@@ -52,7 +52,15 @@ if [[ "${UPSERT_NEW_RELIC_SECRET,,}" == "true" ]]; then
     --namespace "${NEW_RELIC_NAMESPACE}" \
     --from-literal="${NEW_RELIC_LICENSE_KEY_SECRET_KEY}=${NEW_RELIC_LICENSE_KEY}" \
     --dry-run=client \
-    -o yaml | kubectl apply -f -
+    -o yaml | kubectl apply \
+    --server-side \
+    --field-manager=oficina-new-relic-secret \
+    --force-conflicts \
+    -f -
+  kubectl annotate secret "${NEW_RELIC_LICENSE_KEY_SECRET_NAME}" \
+    --namespace "${NEW_RELIC_NAMESPACE}" \
+    kubectl.kubernetes.io/last-applied-configuration- \
+    >/dev/null 2>&1 || true
 else
   log "Reutilizando Secret Kubernetes existente: ${NEW_RELIC_LICENSE_KEY_SECRET_NAME}"
 fi
