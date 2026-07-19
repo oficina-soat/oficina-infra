@@ -124,6 +124,11 @@ locals {
     for route_key, service_name in local.microservice_public_route_services : route_key => {
       integration_uri = module.microservice_private_nlb[service_name].listener_arn
       connection_type = "VPC_LINK"
+      request_parameters = route_key == "POST /api/v1/integracoes/mercado-pago/webhooks" ? {
+        # A assinatura HMAC do Mercado Pago inclui o x-request-id original.
+        # O mapeamento específico prevalece sobre a correlação padrão do módulo.
+        "overwrite:header.X-Request-Id" = "$request.header.x-request-id"
+      } : {}
     }
   } : {}
   api_gateway_http_routes = merge(
