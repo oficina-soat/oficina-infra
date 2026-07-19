@@ -79,6 +79,9 @@ fi
 log "Aplicando Terraform do ambiente lab"
 TERRAFORM_ACTION=apply "${SCRIPT_DIR}/ci-terraform.sh"
 
+log "Reconciliando o endpoint SMTP privado da notificacao-lambda"
+"${SCRIPT_DIR}/ci-reconcile-notificacao-mailhog.sh"
+
 if [[ "${RDS_REQUIRED_ON_DEPLOY}" == "true" ]]; then
   "${SCRIPT_DIR}/ci-rds-power.sh" wait-available
 fi
