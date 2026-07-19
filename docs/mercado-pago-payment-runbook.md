@@ -15,6 +15,8 @@ Configure no executor do deploy, sem persistir os valores no Git:
 
 O script [apply-microservices.sh](../scripts/manual/apply-microservices.sh) materializa esses valores no secret Kubernetes `oficina-billing-service-mercado-pago-env`. O valor do secret, a assinatura, o código PIX, o QR Code e o token não devem aparecer em logs, métricas, traces ou evidências.
 
+O API Gateway deve preservar o `x-request-id` enviado pelo Mercado Pago nessa rota. Esse valor participa do manifesto HMAC junto com `data.id` e `ts`; substituí-lo pelo identificador interno do API Gateway invalida toda notificação legítima. A correlação interna continua em `X-Correlation-Id` e nos campos sanitizados de observabilidade.
+
 No painel do Mercado Pago, configure a notificação de pagamentos para:
 
 ```text
