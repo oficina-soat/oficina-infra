@@ -246,7 +246,7 @@ O script `ci-terraform.sh` materializa os valores `TF_VAR_*` em um `-var-file` t
 
 Integração Mercado Pago do `oficina-billing-service`:
 
-- secret `OFICINA_MERCADO_PAGO_ACCESS_TOKEN`, obrigatório apenas quando a integração estiver habilitada
+- secret `OFICINA_MERCADO_PAGO_ACCESS_TOKEN`, obrigatório quando a integração estiver habilitada; no modo `orders` do `lab`, use o Access Token de teste `APP_USR` da aplicação, pois credenciais `TEST-*` não são aceitas pela API Orders
 - secret `OFICINA_MERCADO_PAGO_WEBHOOK_SECRET`, obrigatório quando a integração estiver habilitada e distinto do access token
 - variável `OFICINA_MERCADO_PAGO_ENABLED=true`, para habilitar a integração no ambiente `lab`
 - variável `OFICINA_MERCADO_PAGO_API_MODE=orders`, default canônico; use `payments` somente para rollback temporário da criação
