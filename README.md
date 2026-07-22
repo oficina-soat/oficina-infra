@@ -90,6 +90,46 @@ flowchart TB
 
 As rotas públicas e o fluxo interno estão detalhados em [API Gateway e rotas públicas](../oficina-platform/docs/infrastructure/api-gateway-public-routes.md); ownership, eventos e persistência permanecem normativos no [`oficina-platform`](../oficina-platform/).
 
+### Construção, deploy e ciclo do lab
+
+```mermaid
+sequenceDiagram
+  actor D as Desenvolvedor
+  participant GH as GitHub Actions
+  participant S3 as S3 de artefatos
+  participant ECR as Amazon ECR
+  participant TF as Terraform / oficina-infra
+  participant EKS as Amazon EKS
+  participant LA as Lambdas
+  participant GW as API Gateway
+  D->>GH: publica mudança versionada
+  GH->>GH: valida testes, cobertura e contratos
+  par Microsserviços
+    GH->>ECR: publica imagens versionadas
+    GH->>EKS: aplica manifests e aguarda rollout
+  and Lambdas
+    GH->>S3: publica pacotes nativos versionados
+    GH->>LA: atualiza funções impactadas
+  end
+  TF->>GW: mantém rotas para EKS e Lambdas
+  opt UI opcional e isolada
+    GH->>ECR: publica imagem da UI
+    GH->>EKS: atualiza workload Nginx
+    GW->>EKS: rota de fallback da UI
+  end
+```
+
+```mermaid
+flowchart LR
+  Suspenso["lab suspenso"] -->|retomar infraestrutura| Base["Terraform, rede, dados e EKS disponíveis"]
+  Base -->|retomar workloads| Runtime["Deployments e Lambdas ativos"]
+  Runtime -->|validar health, rotas e mensageria| Pronto["lab pronto para homologação"]
+  Pronto -->|suspender workloads| Base
+  Base -->|suspender infraestrutura elegível| Suspenso
+```
+
+O provisionamento compartilhado precede o deploy dos runtimes. A UI é opcional e seu ciclo não bloqueia a entrega das APIs. A retomada usa o fluxo de deploy e a suspensão controlada está implementada em [`scripts/actions/ci-suspend.sh`](scripts/actions/ci-suspend.sh). Os fluxos de negócio servidos por essa topologia estão na [visão transversal da plataforma](../oficina-platform/README.md#fluxos-operacionais).
+
 ## RDS PostgreSQL compartilhado
 
 O primeiro artefato provisionável deste repositório é o RDS PostgreSQL compartilhado:
