@@ -252,11 +252,13 @@ Integração Mercado Pago do `oficina-billing-service`:
 - secret `OFICINA_MERCADO_PAGO_WEBHOOK_SECRET`, obrigatório quando a integração estiver habilitada e distinto do access token
 - variável `OFICINA_MERCADO_PAGO_ENABLED=true`, para habilitar a integração no ambiente `lab`
 - variável `OFICINA_MERCADO_PAGO_API_MODE=orders`, default canônico; use `payments` somente para rollback temporário da criação
-- variável `OFICINA_MERCADO_PAGO_PAYER_EMAIL=test_user_br@testuser.com` no cenário automático do sandbox
-- variável `OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME=APRO` para aprovação automática, exclusivamente no `lab`
+- variável `OFICINA_MERCADO_PAGO_PAYER_EMAIL`, com default `test_user_br@testuser.com` no cenário automático do sandbox
+- variável `OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME`, com default `APRO` para aprovação automática, exclusivamente no `lab`
 - variável opcional `OFICINA_MERCADO_PAGO_API_URL`, apenas quando for necessário sobrescrever `https://api.mercadopago.com`
 
 O API Gateway encaminha anonimamente apenas `POST /api/v1/integracoes/mercado-pago/webhooks`; a assinatura HMAC é validada no Billing antes de qualquer consulta ao provedor. O painel deve habilitar **Order (Mercado Pago)** e manter **Pagamentos** apenas durante a compatibilidade com cobranças legadas. A reconciliação operacional em `POST /api/v1/pagamentos/{pagamentoId}/reconciliacao` continua protegida pelo JWT do serviço. Provisionamento, alertas e resposta a incidentes estão no [runbook da integração Mercado Pago](docs/mercado-pago-payment-runbook.md).
+
+O `scripts/manual/apply-microservices.sh` materializa os dois defaults do pagador no secret Kubernetes mesmo quando as variáveis de CI não estiverem cadastradas. Valores explícitos continuam podendo sobrescrevê-los; o marcador `APRO` não deve ser reutilizado fora do `lab`.
 
 Comando local equivalente:
 
