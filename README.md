@@ -151,6 +151,8 @@ O script encaminha os Services Kubernetes para portas locais e valida `/q/openap
 
 Se alguma porta local já estiver em uso, sobrescreva `OFICINA_OS_LOCAL_PORT`, `OFICINA_BILLING_LOCAL_PORT` ou `OFICINA_EXECUTION_LOCAL_PORT`. Para restringir a execução, use `MICROSERVICE_NAMES=oficina-os-service`.
 
+O SMTP do MailHog é publicado somente pelo NLB interno `${EKS_CLUSTER_NAME}-mailhog-smtp`. O Terraform cria o security group dedicado `${EKS_CLUSTER_NAME}-notificacao-lambda`, esperado pelo deploy da `notificacao-lambda`, e permite exclusivamente tráfego TCP/1025 desse grupo para o security group do NLB. A Lambda não depende de acesso SMTP liberado para todo o CIDR da VPC.
+
 ## Observabilidade New Relic
 
 O New Relic OpenTelemetry Collector do ambiente `lab` é instalado via Helm no cluster `eks-lab`, usando license key fornecida por variável/secret de deploy e valores versionados em [k8s/components/new-relic-otel-collector/values.lab.yaml](k8s/components/new-relic-otel-collector/values.lab.yaml). No workflow de deploy, o modo padrão `INSTALL_NEW_RELIC_OTEL_COLLECTOR=auto` instala ou atualiza o collector quando a secret GitHub `NEW_RELIC_LICENSE_KEY` está configurada.

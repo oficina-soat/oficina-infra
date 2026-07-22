@@ -1,9 +1,5 @@
 data "aws_caller_identity" "current" {}
 
-data "aws_vpc" "selected" {
-  id = local.resolved_vpc_id
-}
-
 locals {
   azs          = length(var.azs) > 0 ? slice(var.azs, 0, 2) : ["${var.region}a", "${var.region}b"]
   input_vpc_id = var.vpc_id != null && trimspace(var.vpc_id) != "" ? var.vpc_id : null
@@ -451,10 +447,33 @@ module "mailhog_smtp_private_nlb" {
   listener_port                     = 1025
   target_node_port                  = 31025
   target_autoscaling_group_name     = module.eks[0].node_group_autoscaling_group_name
-  allowed_source_security_group_ids = []
-  allowed_source_cidr_blocks        = [data.aws_vpc.selected.cidr_block]
+  allowed_source_security_group_ids = [aws_security_group.notificacao_lambda[0].id]
   target_security_group_ids         = [module.eks[0].cluster_security_group_id]
   tags                              = local.default_tags
+}
+
+resource "aws_security_group" "notificacao_lambda" {
+  count = var.create_eks ? 1 : 0
+
+  name        = "${var.cluster_name}-notificacao-lambda"
+  description = "Saida SMTP da notificacao-lambda para o MailHog privado"
+  vpc_id      = local.resolved_vpc_id
+
+  tags = merge(local.default_tags, {
+    Name = "${var.cluster_name}-notificacao-lambda"
+  })
+}
+
+resource "aws_vpc_security_group_egress_rule" "notificacao_lambda_to_mailhog_smtp" {
+  count = var.create_eks ? 1 : 0
+
+  security_group_id            = aws_security_group.notificacao_lambda[0].id
+  referenced_security_group_id = module.mailhog_smtp_private_nlb[0].security_group_id
+  ip_protocol                  = "tcp"
+  from_port                    = 1025
+  to_port                      = 1025
+
+  tags = local.default_tags
 }
 
 module "ecr" {
