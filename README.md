@@ -318,6 +318,7 @@ Os dois fluxos são idempotentes: suspender um lab já suspenso ou retomar um la
 
 O workflow [Destroy Lab](.github/workflows/destroy-lab.yml) força `deletion_protection=false`, `skip_final_snapshot=true`, `delete_automated_backups=true` e `ecr_force_delete=true`. Antes de executar `terraform destroy`, [scripts/actions/ci-terraform.sh](scripts/actions/ci-terraform.sh) também:
 
+- suspende a hospedagem opcional da UI em seu state independente, removendo NLB, target group e security group que dependem da VPC principal, mas preservando o ECR e a telemetria opcionais;
 - remove imagens dos repositórios ECR canônicos para evitar falha de `RepositoryNotEmptyException`;
 - remove a configuração de VPC das Lambdas externas conhecidas do lab (`oficina-auth-lambda-lab`, `oficina-auth-sync-lambda-lab` e `oficina-notificacao-lambda-lab`, salvo override por variáveis), apaga as funções, seus log groups e security groups, aguardando a liberação das ENIs;
 - remove a proteção de exclusão da instância `oficina-postgres-lab` quando ela já existe protegida na AWS.
