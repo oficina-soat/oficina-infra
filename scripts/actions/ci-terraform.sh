@@ -55,6 +55,7 @@ Variaveis suportadas:
   TF_VAR_ecr_force_delete   true|false para destruir repositorios ECR com imagens. Default do script: false; em destroy: true
   DESTROY_ECR_IMAGES        true|false para remover imagens ECR antes do destroy. Default: true
   DESTROY_EXTERNAL_LAMBDAS  true|false para remover Lambdas externas que prendem ENIs da VPC. Default: true
+  DESTROY_OPTIONAL_UI       true|false para suspender o state opcional da UI antes do destroy. Default: true
   DESTROY_LAMBDA_ENI_WAIT_SECONDS segundos para aguardar liberacao de ENIs Lambda. Default/minimo: 3600
   DESTROY_LAMBDA_ENI_POLL_SECONDS intervalo entre consultas de ENIs Lambda. Default: 30
 EOF
@@ -422,6 +423,20 @@ disable_rds_deletion_protection_for_destroy() {
 
   aws --region "${AWS_REGION}" rds wait db-instance-available \
     --db-instance-identifier "${db_identifier}"
+}
+
+suspend_optional_ui_for_destroy() {
+  if [[ "${TERRAFORM_ACTION}" != "destroy" ]]; then
+    return
+  fi
+
+  if ! is_truthy_value "${DESTROY_OPTIONAL_UI:-true}"; then
+    log "Limpeza preventiva da UI opcional desabilitada; use somente apos confirmar que NLB, ENIs e security groups externos nao existem"
+    return
+  fi
+
+  log "Removendo dependencias opcionais da UI sobre a rede principal antes do destroy"
+  "${SCRIPT_DIR}/ci-ui-workload-lifecycle.sh" suspend
 }
 
 delete_ecr_repository_images_for_destroy() {
@@ -811,6 +826,7 @@ case "${TERRAFORM_ACTION}" in
     terraform -chdir="${TERRAFORM_DIR}" apply -auto-approve -input=false "${TERRAFORM_OVERRIDE_VAR_ARGS[@]}"
     ;;
   destroy)
+    suspend_optional_ui_for_destroy
     delete_ecr_repository_images_for_destroy
     delete_external_lambdas_for_destroy
     disable_rds_deletion_protection_for_destroy

@@ -318,8 +318,9 @@ Os dois fluxos são idempotentes: suspender um lab já suspenso ou retomar um la
 
 O workflow [Destroy Lab](.github/workflows/destroy-lab.yml) força `deletion_protection=false`, `skip_final_snapshot=true`, `delete_automated_backups=true` e `ecr_force_delete=true`. Antes de executar `terraform destroy`, [scripts/actions/ci-terraform.sh](scripts/actions/ci-terraform.sh) também:
 
+- suspende a hospedagem opcional da UI em seu state independente, removendo NLB, target group e security group que dependem da VPC principal, mas preservando o ECR e a telemetria opcionais;
 - remove imagens dos repositórios ECR canônicos para evitar falha de `RepositoryNotEmptyException`;
 - remove a configuração de VPC das Lambdas externas conhecidas do lab (`oficina-auth-lambda-lab`, `oficina-auth-sync-lambda-lab` e `oficina-notificacao-lambda-lab`, salvo override por variáveis), apaga as funções, seus log groups e security groups, aguardando a liberação das ENIs;
 - remove a proteção de exclusão da instância `oficina-postgres-lab` quando ela já existe protegida na AWS.
 
-Quando houver nomes customizados, use `DESTROY_ECR_REPOSITORY_NAMES` e `DESTROY_LAMBDA_FUNCTION_NAMES` no workflow [Destroy Lab](.github/workflows/destroy-lab.yml). Para preservar imagens ECR ou Lambdas externas em uma execução pontual, defina `DESTROY_ECR_IMAGES=false` ou `DESTROY_EXTERNAL_LAMBDAS=false`.
+Quando houver nomes customizados, use `DESTROY_ECR_REPOSITORY_NAMES` e `DESTROY_LAMBDA_FUNCTION_NAMES` no workflow [Destroy Lab](.github/workflows/destroy-lab.yml). Para preservar imagens ECR ou Lambdas externas em uma execução pontual, defina `DESTROY_ECR_IMAGES=false` ou `DESTROY_EXTERNAL_LAMBDAS=false`. `DESTROY_OPTIONAL_UI=false` é reservado à recuperação de um destroy parcial, depois de confirmar que NLB, ENIs e security groups opcionais já foram removidos; o workflow mantém a limpeza habilitada por padrão.
