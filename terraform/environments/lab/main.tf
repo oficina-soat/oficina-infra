@@ -123,8 +123,26 @@ locals {
     "POST /api/v1/execucoes/{execucaoId}/reparo/conclusao"        = "oficina-execution-service"
     "GET /api/v1/dashboard/execucao"                              = "oficina-execution-service"
   }
+  microservice_lab_swagger_route_services = {
+    "GET /q/swagger-ui/oficina-os-service"                 = "oficina-os-service"
+    "GET /q/swagger-ui/oficina-os-service/"                = "oficina-os-service"
+    "GET /q/swagger-ui/oficina-os-service/{proxy+}"        = "oficina-os-service"
+    "GET /q/openapi/oficina-os-service"                    = "oficina-os-service"
+    "GET /q/swagger-ui/oficina-billing-service"            = "oficina-billing-service"
+    "GET /q/swagger-ui/oficina-billing-service/"           = "oficina-billing-service"
+    "GET /q/swagger-ui/oficina-billing-service/{proxy+}"   = "oficina-billing-service"
+    "GET /q/openapi/oficina-billing-service"               = "oficina-billing-service"
+    "GET /q/swagger-ui/oficina-execution-service"          = "oficina-execution-service"
+    "GET /q/swagger-ui/oficina-execution-service/"         = "oficina-execution-service"
+    "GET /q/swagger-ui/oficina-execution-service/{proxy+}" = "oficina-execution-service"
+    "GET /q/openapi/oficina-execution-service"             = "oficina-execution-service"
+  }
+  microservice_api_gateway_route_services = merge(
+    local.microservice_public_route_services,
+    local.microservice_lab_swagger_route_services,
+  )
   microservice_public_api_gateway_http_routes = local.expose_microservices_api_gateway ? {
-    for route_key, service_name in local.microservice_public_route_services : route_key => {
+    for route_key, service_name in local.microservice_api_gateway_route_services : route_key => {
       integration_uri = module.microservice_private_nlb[service_name].listener_arn
       connection_type = "VPC_LINK"
       request_parameters = route_key == "POST /api/v1/integracoes/mercado-pago/webhooks" ? {

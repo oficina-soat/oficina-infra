@@ -135,21 +135,27 @@ O script cria ou atualiza os secrets Kubernetes de runtime, resolve `OFICINA_AUT
 
 Os workflows dos microsserviços também usam esse script para materializar ou atualizar apenas o próprio serviço. Para isso, informam `MICROSERVICE_NAMES=<nome-do-servico>`, a variável de imagem correspondente (`OFICINA_OS_SERVICE_IMAGE`, `OFICINA_BILLING_SERVICE_IMAGE` ou `OFICINA_EXECUTION_SERVICE_IMAGE`) e `WAIT_MICROSERVICE_ROLLOUT=true`. Quando `OFICINA_AUTH_ISSUER` não é informado e o Terraform output não está disponível no checkout do workflow do serviço, o script descobre o endpoint pelo HTTP API `API_GATEWAY_NAME`, cujo padrão é `eks-lab-http-api`.
 
-Para acessar localmente os microsserviços implantados no EKS sem publicar endpoints operacionais no API Gateway, use o port-forward controlado:
+Para acessar localmente os microsserviços implantados no EKS, use o port-forward controlado:
 
 ```bash
 scripts/manual/start-port-forwards.sh
 ```
 
-O script encaminha os Services Kubernetes para portas locais e valida `/q/openapi` e `/q/swagger-ui` de cada microsserviço:
+O script encaminha os Services Kubernetes para portas locais e valida os caminhos técnicos exclusivos usados também pelo API Gateway do `lab`:
 
 | Serviço | Swagger UI | OpenAPI |
 |---|---|---|
-| `oficina-os-service` | `http://localhost:8081/q/swagger-ui` | `http://localhost:8081/q/openapi` |
-| `oficina-billing-service` | `http://localhost:8082/q/swagger-ui` | `http://localhost:8082/q/openapi` |
-| `oficina-execution-service` | `http://localhost:8083/q/swagger-ui` | `http://localhost:8083/q/openapi` |
+| `oficina-os-service` | `http://localhost:8081/q/swagger-ui/oficina-os-service/` | `http://localhost:8081/q/openapi/oficina-os-service` |
+| `oficina-billing-service` | `http://localhost:8082/q/swagger-ui/oficina-billing-service/` | `http://localhost:8082/q/openapi/oficina-billing-service` |
+| `oficina-execution-service` | `http://localhost:8083/q/swagger-ui/oficina-execution-service/` | `http://localhost:8083/q/openapi/oficina-execution-service` |
 
 Se alguma porta local já estiver em uso, sobrescreva `OFICINA_OS_LOCAL_PORT`, `OFICINA_BILLING_LOCAL_PORT` ou `OFICINA_EXECUTION_LOCAL_PORT`. Para restringir a execução, use `MICROSERVICE_NAMES=oficina-os-service`.
+
+No API Gateway, consulte diretamente os outputs Terraform
+`api_gateway_swagger_urls` e `api_gateway_openapi_urls`. Essas rotas de
+documentação são anônimas e exclusivas do ambiente `lab`; as operações de
+negócio exibidas pelo Swagger continuam exigindo a autenticação definida por
+cada contrato.
 
 ## Observabilidade New Relic
 

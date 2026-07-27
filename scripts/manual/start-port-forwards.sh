@@ -32,6 +32,18 @@ declare -A SERVICE_LOCAL_PORTS=(
 	["oficina-execution-service"]="${OFICINA_EXECUTION_LOCAL_PORT}"
 )
 
+declare -A SERVICE_SWAGGER_PATHS=(
+	["oficina-os-service"]="/q/swagger-ui/oficina-os-service/"
+	["oficina-billing-service"]="/q/swagger-ui/oficina-billing-service/"
+	["oficina-execution-service"]="/q/swagger-ui/oficina-execution-service/"
+)
+
+declare -A SERVICE_OPENAPI_PATHS=(
+	["oficina-os-service"]="/q/openapi/oficina-os-service"
+	["oficina-billing-service"]="/q/openapi/oficina-billing-service"
+	["oficina-execution-service"]="/q/openapi/oficina-execution-service"
+)
+
 usage() {
 	cat <<EOF
 Uso:
@@ -45,7 +57,7 @@ Variaveis suportadas:
   MICROSERVICE_NAMES            Servicos separados por espaco ou virgula. Default: todos
   FORWARD_MICROSERVICES         true|false. Default: true
   FORWARD_MAILHOG               true|false. Default: true
-  VERIFY_SWAGGER                true|false. Valida /q/openapi e /q/swagger-ui. Default: true
+  VERIFY_SWAGGER                true|false. Valida OpenAPI e Swagger UI de cada servico. Default: true
   PORT_FORWARD_KEEPALIVE        true|false. Reinicia port-forward apos recriacao de pods. Default: true
   PORT_FORWARD_RETRY_SECONDS    Intervalo entre tentativas quando KEEPALIVE=true. Default: 2
   OFICINA_OS_LOCAL_PORT         Porta local do oficina-os-service. Default: 8081
@@ -251,14 +263,16 @@ verify_swagger() {
 	local service_name="$1"
 	local local_port="$2"
 	local base_url="http://localhost:${local_port}"
+	local swagger_path="${SERVICE_SWAGGER_PATHS[${service_name}]}"
+	local openapi_path="${SERVICE_OPENAPI_PATHS[${service_name}]}"
 
 	if [[ "${VERIFY_SWAGGER}" != "true" ]]; then
 		return 0
 	fi
 
-	verify_url "${service_name} OpenAPI" "${base_url}/q/openapi"
-	verify_url "${service_name} Swagger UI" "${base_url}/q/swagger-ui"
-	log "Swagger validado para ${service_name}: ${base_url}/q/swagger-ui"
+	verify_url "${service_name} OpenAPI" "${base_url}${openapi_path}"
+	verify_url "${service_name} Swagger UI" "${base_url}${swagger_path}"
+	log "Swagger validado para ${service_name}: ${base_url}${swagger_path}"
 }
 
 append_summary() {
@@ -371,13 +385,15 @@ start_microservice_forward() {
 	local service_name="$1"
 	local local_port="${SERVICE_LOCAL_PORTS[${service_name}]}"
 	local base_url="http://localhost:${local_port}"
+	local swagger_path="${SERVICE_SWAGGER_PATHS[${service_name}]}"
+	local openapi_path="${SERVICE_OPENAPI_PATHS[${service_name}]}"
 
 	start_port_forward \
 		"${K8S_NAMESPACE}" \
 		"${service_name}" \
 		"${local_port}:8080" \
 		"${service_name}" \
-		"${service_name}: ${base_url} | Swagger: ${base_url}/q/swagger-ui | OpenAPI: ${base_url}/q/openapi"
+		"${service_name}: ${base_url} | Swagger: ${base_url}${swagger_path} | OpenAPI: ${base_url}${openapi_path}"
 
 	verify_swagger "${service_name}" "${local_port}"
 }

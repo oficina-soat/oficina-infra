@@ -80,6 +80,24 @@ output "api_gateway_endpoint" {
   description = "Endpoint publico do API Gateway HTTP."
 }
 
+output "api_gateway_swagger_urls" {
+  value = try({
+    oficina-os-service        = "${module.api_gateway[0].api_endpoint}/q/swagger-ui/oficina-os-service/"
+    oficina-billing-service   = "${module.api_gateway[0].api_endpoint}/q/swagger-ui/oficina-billing-service/"
+    oficina-execution-service = "${module.api_gateway[0].api_endpoint}/q/swagger-ui/oficina-execution-service/"
+  }, {})
+  description = "URLs publicas das Swagger UI exclusivas do ambiente lab."
+}
+
+output "api_gateway_openapi_urls" {
+  value = try({
+    oficina-os-service        = "${module.api_gateway[0].api_endpoint}/q/openapi/oficina-os-service"
+    oficina-billing-service   = "${module.api_gateway[0].api_endpoint}/q/openapi/oficina-billing-service"
+    oficina-execution-service = "${module.api_gateway[0].api_endpoint}/q/openapi/oficina-execution-service"
+  }, {})
+  description = "URLs publicas das OpenAPI geradas exclusivas do ambiente lab."
+}
+
 output "api_gateway_id" {
   value       = try(module.api_gateway[0].api_id, null)
   description = "ID do HTTP API compartilhado."
