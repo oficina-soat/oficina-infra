@@ -473,7 +473,10 @@ module "mailhog_smtp_private_nlb" {
 }
 
 resource "aws_security_group" "notificacao_lambda" {
-  count = var.create_eks ? 1 : 0
+  # A notificacao-lambda e externa ao ciclo de vida do EKS e permanece
+  # conectada a este grupo durante o suspend. Preserve o grupo para evitar
+  # uma exclusao impossivel enquanto as ENIs gerenciadas pela Lambda existem.
+  count = 1
 
   name        = "${var.cluster_name}-notificacao-lambda"
   description = "Saida SMTP da notificacao-lambda para o MailHog privado"
