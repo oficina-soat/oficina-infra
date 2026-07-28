@@ -55,6 +55,7 @@ Variaveis suportadas:
   TF_VAR_ecr_force_delete   true|false para destruir repositorios ECR com imagens. Default do script: false; em destroy: true
   DESTROY_ECR_IMAGES        true|false para remover imagens ECR antes do destroy. Default: true
   DESTROY_EXTERNAL_LAMBDAS  true|false para remover Lambdas externas que prendem ENIs da VPC. Default: true
+  DESTROY_OPTIONAL_UI       true|false para suspender o state opcional da UI antes do destroy. Default: true
   DESTROY_LAMBDA_ENI_WAIT_SECONDS segundos para aguardar liberacao de ENIs Lambda. Default/minimo: 3600
   DESTROY_LAMBDA_ENI_POLL_SECONDS intervalo entre consultas de ENIs Lambda. Default: 30
 EOF
@@ -426,6 +427,11 @@ disable_rds_deletion_protection_for_destroy() {
 
 suspend_optional_ui_for_destroy() {
   if [[ "${TERRAFORM_ACTION}" != "destroy" ]]; then
+    return
+  fi
+
+  if ! is_truthy_value "${DESTROY_OPTIONAL_UI:-true}"; then
+    log "Limpeza preventiva da UI opcional desabilitada; use somente apos confirmar que NLB, ENIs e security groups externos nao existem"
     return
   fi
 

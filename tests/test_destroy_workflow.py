@@ -24,6 +24,15 @@ class DestroyWorkflowTest(unittest.TestCase):
             destroy_branch.index('terraform -chdir="${TERRAFORM_DIR}" destroy'),
         )
 
+    def test_optional_ui_cleanup_is_enabled_by_default(self):
+        script = TERRAFORM_SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn('${DESTROY_OPTIONAL_UI:-true}', script)
+        self.assertIn(
+            "use somente apos confirmar que NLB, ENIs e security groups externos nao existem",
+            script,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
