@@ -90,6 +90,46 @@ flowchart TB
 
 As rotas públicas e o fluxo interno estão detalhados em [API Gateway e rotas públicas](../oficina-platform/docs/infrastructure/api-gateway-public-routes.md); ownership, eventos e persistência permanecem normativos no [`oficina-platform`](../oficina-platform/).
 
+### Construção, deploy e ciclo do lab
+
+```mermaid
+sequenceDiagram
+  actor D as Desenvolvedor
+  participant GH as GitHub Actions
+  participant S3 as S3 de artefatos
+  participant ECR as Amazon ECR
+  participant TF as Terraform / oficina-infra
+  participant EKS as Amazon EKS
+  participant LA as Lambdas
+  participant GW as API Gateway
+  D->>GH: publica mudança versionada
+  GH->>GH: valida testes, cobertura e contratos
+  par Microsserviços
+    GH->>ECR: publica imagens versionadas
+    GH->>EKS: aplica manifests e aguarda rollout
+  and Lambdas
+    GH->>S3: publica pacotes nativos versionados
+    GH->>LA: atualiza funções impactadas
+  end
+  TF->>GW: mantém rotas para EKS e Lambdas
+  opt UI opcional e isolada
+    GH->>ECR: publica imagem da UI
+    GH->>EKS: atualiza workload Nginx
+    GW->>EKS: rota de fallback da UI
+  end
+```
+
+```mermaid
+flowchart LR
+  Suspenso["lab suspenso"] -->|retomar infraestrutura| Base["Terraform, rede, dados e EKS disponíveis"]
+  Base -->|retomar workloads| Runtime["Deployments e Lambdas ativos"]
+  Runtime -->|validar health, rotas e mensageria| Pronto["lab pronto para homologação"]
+  Pronto -->|suspender workloads| Base
+  Base -->|suspender infraestrutura elegível| Suspenso
+```
+
+O provisionamento compartilhado precede o deploy dos runtimes. A UI é opcional e seu ciclo não bloqueia a entrega das APIs. A retomada usa o fluxo de deploy e a suspensão controlada está implementada em [`scripts/actions/ci-suspend.sh`](scripts/actions/ci-suspend.sh). Os fluxos de negócio servidos por essa topologia estão na [visão transversal da plataforma](../oficina-platform/README.md#fluxos-operacionais).
+
 ## RDS PostgreSQL compartilhado
 
 O primeiro artefato provisionável deste repositório é o RDS PostgreSQL compartilhado:
@@ -156,6 +196,8 @@ No API Gateway, consulte diretamente os outputs Terraform
 documentação são anônimas e exclusivas do ambiente `lab`; as operações de
 negócio exibidas pelo Swagger continuam exigindo a autenticação definida por
 cada contrato.
+
+O SMTP do MailHog é publicado somente pelo NLB interno `${EKS_CLUSTER_NAME}-mailhog-smtp`. O Terraform cria o security group dedicado `${EKS_CLUSTER_NAME}-notificacao-lambda`, esperado pelo deploy da `notificacao-lambda`, e permite exclusivamente tráfego TCP/1025 desse grupo para o security group do NLB. A Lambda não depende de acesso SMTP liberado para todo o CIDR da VPC.
 
 ## Observabilidade New Relic
 
@@ -256,11 +298,13 @@ Integração Mercado Pago do `oficina-billing-service`:
 - secret `OFICINA_MERCADO_PAGO_WEBHOOK_SECRET`, obrigatório quando a integração estiver habilitada e distinto do access token
 - variável `OFICINA_MERCADO_PAGO_ENABLED=true`, para habilitar a integração no ambiente `lab`
 - variável `OFICINA_MERCADO_PAGO_API_MODE=orders`, default canônico; use `payments` somente para rollback temporário da criação
-- variável `OFICINA_MERCADO_PAGO_PAYER_EMAIL=test_user_br@testuser.com` no cenário automático do sandbox
-- variável `OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME=APRO` para aprovação automática, exclusivamente no `lab`
+- variável `OFICINA_MERCADO_PAGO_PAYER_EMAIL`, com default `test_user_br@testuser.com` no cenário automático do sandbox
+- variável `OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME`, com default `APRO` para aprovação automática, exclusivamente no `lab`
 - variável opcional `OFICINA_MERCADO_PAGO_API_URL`, apenas quando for necessário sobrescrever `https://api.mercadopago.com`
 
 O API Gateway encaminha anonimamente apenas `POST /api/v1/integracoes/mercado-pago/webhooks`; a assinatura HMAC é validada no Billing antes de qualquer consulta ao provedor. O painel deve habilitar **Order (Mercado Pago)** e manter **Pagamentos** apenas durante a compatibilidade com cobranças legadas. A reconciliação operacional em `POST /api/v1/pagamentos/{pagamentoId}/reconciliacao` continua protegida pelo JWT do serviço. Provisionamento, alertas e resposta a incidentes estão no [runbook da integração Mercado Pago](docs/mercado-pago-payment-runbook.md).
+
+O `scripts/manual/apply-microservices.sh` materializa os dois defaults do pagador no secret Kubernetes mesmo quando as variáveis de CI não estiverem cadastradas. Valores explícitos continuam podendo sobrescrevê-los; o marcador `APRO` não deve ser reutilizado fora do `lab`.
 
 Comando local equivalente:
 
@@ -280,6 +324,7 @@ Os dois fluxos são idempotentes: suspender um lab já suspenso ou retomar um la
 
 O workflow [Destroy Lab](.github/workflows/destroy-lab.yml) força `deletion_protection=false`, `skip_final_snapshot=true`, `delete_automated_backups=true` e `ecr_force_delete=true`. Antes de executar `terraform destroy`, [scripts/actions/ci-terraform.sh](scripts/actions/ci-terraform.sh) também:
 
+- suspende a hospedagem opcional da UI em seu state independente, removendo NLB, target group e security group que dependem da VPC principal, mas preservando o ECR e a telemetria opcionais;
 - remove imagens dos repositórios ECR canônicos para evitar falha de `RepositoryNotEmptyException`;
 - remove a configuração de VPC das Lambdas externas conhecidas do lab (`oficina-auth-lambda-lab`, `oficina-auth-sync-lambda-lab` e `oficina-notificacao-lambda-lab`, salvo override por variáveis), apaga as funções, seus log groups e security groups, aguardando a liberação das ENIs;
 - remove a proteção de exclusão da instância `oficina-postgres-lab` quando ela já existe protegida na AWS.

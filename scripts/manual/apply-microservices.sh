@@ -27,8 +27,8 @@ OFICINA_MERCADO_PAGO_ACCESS_TOKEN="${OFICINA_MERCADO_PAGO_ACCESS_TOKEN:-}"
 OFICINA_MERCADO_PAGO_WEBHOOK_SECRET="${OFICINA_MERCADO_PAGO_WEBHOOK_SECRET:-}"
 OFICINA_MERCADO_PAGO_API_URL="${OFICINA_MERCADO_PAGO_API_URL:-}"
 OFICINA_MERCADO_PAGO_API_MODE="${OFICINA_MERCADO_PAGO_API_MODE:-orders}"
-OFICINA_MERCADO_PAGO_PAYER_EMAIL="${OFICINA_MERCADO_PAGO_PAYER_EMAIL:-}"
-OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME="${OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME:-}"
+OFICINA_MERCADO_PAGO_PAYER_EMAIL="${OFICINA_MERCADO_PAGO_PAYER_EMAIL:-test_user_br@testuser.com}"
+OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME="${OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME:-APRO}"
 WAIT_MICROSERVICE_ROLLOUT="${WAIT_MICROSERVICE_ROLLOUT:-false}"
 MICROSERVICE_ROLLOUT_TIMEOUT="${MICROSERVICE_ROLLOUT_TIMEOUT:-300s}"
 
@@ -62,8 +62,8 @@ Variaveis suportadas:
   OFICINA_MERCADO_PAGO_WEBHOOK_SECRET Secret de assinatura do webhook. Obrigatorio quando enabled=true
   OFICINA_MERCADO_PAGO_API_URL  URL da API Mercado Pago. Opcional; o servico possui default
   OFICINA_MERCADO_PAGO_API_MODE orders|payments. Default: orders; payments existe apenas para rollback
-  OFICINA_MERCADO_PAGO_PAYER_EMAIL Email pagador sandbox. Opcional; o servico possui default
-  OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME Nome pagador sandbox. APRO e exclusivo de lab/test
+  OFICINA_MERCADO_PAGO_PAYER_EMAIL Email pagador sandbox. Default: test_user_br@testuser.com
+  OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME Nome pagador sandbox. Default: APRO, exclusivo de lab/test
   OFICINA_OS_SERVICE_IMAGE      Imagem completa opcional do oficina-os-service
   OFICINA_BILLING_SERVICE_IMAGE Imagem completa opcional do oficina-billing-service
   OFICINA_EXECUTION_SERVICE_IMAGE Imagem completa opcional do oficina-execution-service

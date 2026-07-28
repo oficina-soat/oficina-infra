@@ -11,6 +11,18 @@ SCRIPT = REPOSITORY_ROOT / "scripts" / "manual" / "apply-microservices.sh"
 
 
 class ApplyMicroservicesTest(unittest.TestCase):
+    def test_defines_canonical_lab_payer_defaults(self):
+        script = SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn(
+            'OFICINA_MERCADO_PAGO_PAYER_EMAIL="${OFICINA_MERCADO_PAGO_PAYER_EMAIL:-test_user_br@testuser.com}"',
+            script,
+        )
+        self.assertIn(
+            'OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME="${OFICINA_MERCADO_PAGO_PAYER_FIRST_NAME:-APRO}"',
+            script,
+        )
+
     def run_with_access_token(self, access_token: str) -> subprocess.CompletedProcess[str]:
         with tempfile.TemporaryDirectory() as temporary_directory:
             bin_path = Path(temporary_directory) / "bin"

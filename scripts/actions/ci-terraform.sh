@@ -424,6 +424,15 @@ disable_rds_deletion_protection_for_destroy() {
     --db-instance-identifier "${db_identifier}"
 }
 
+suspend_optional_ui_for_destroy() {
+  if [[ "${TERRAFORM_ACTION}" != "destroy" ]]; then
+    return
+  fi
+
+  log "Removendo dependencias opcionais da UI sobre a rede principal antes do destroy"
+  "${SCRIPT_DIR}/ci-ui-workload-lifecycle.sh" suspend
+}
+
 delete_ecr_repository_images_for_destroy() {
   if [[ "${TERRAFORM_ACTION}" != "destroy" ]]; then
     return
@@ -811,6 +820,7 @@ case "${TERRAFORM_ACTION}" in
     terraform -chdir="${TERRAFORM_DIR}" apply -auto-approve -input=false "${TERRAFORM_OVERRIDE_VAR_ARGS[@]}"
     ;;
   destroy)
+    suspend_optional_ui_for_destroy
     delete_ecr_repository_images_for_destroy
     delete_external_lambdas_for_destroy
     disable_rds_deletion_protection_for_destroy

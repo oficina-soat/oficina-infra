@@ -68,6 +68,16 @@ output "eks_node_group_autoscaling_group_name" {
   description = "Auto Scaling Group do node group usado por target groups opcionais."
 }
 
+output "notificacao_lambda_security_group_id" {
+  value       = try(aws_security_group.notificacao_lambda[0].id, null)
+  description = "Security group dedicado da notificacao-lambda para acesso SMTP ao MailHog privado."
+}
+
+output "mailhog_smtp_private_nlb_security_group_id" {
+  value       = try(module.mailhog_smtp_private_nlb[0].security_group_id, null)
+  description = "Security group do NLB SMTP privado do MailHog."
+}
+
 output "ecr_repository_urls" {
   value = {
     for name, repository in module.ecr : name => repository.repository_url
