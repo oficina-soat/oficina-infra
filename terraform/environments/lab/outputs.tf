@@ -92,9 +92,9 @@ output "api_gateway_endpoint" {
 
 output "api_gateway_swagger_urls" {
   value = try({
-    oficina-os-service        = "${module.api_gateway[0].api_endpoint}/q/swagger-ui/oficina-os-service/"
-    oficina-billing-service   = "${module.api_gateway[0].api_endpoint}/q/swagger-ui/oficina-billing-service/"
-    oficina-execution-service = "${module.api_gateway[0].api_endpoint}/q/swagger-ui/oficina-execution-service/"
+    oficina-os-service        = "${module.api_gateway[0].api_endpoint}/q/swagger-ui/oficina-os-service"
+    oficina-billing-service   = "${module.api_gateway[0].api_endpoint}/q/swagger-ui/oficina-billing-service"
+    oficina-execution-service = "${module.api_gateway[0].api_endpoint}/q/swagger-ui/oficina-execution-service"
   }, {})
   description = "URLs publicas das Swagger UI exclusivas do ambiente lab."
 }

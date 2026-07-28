@@ -121,15 +121,12 @@ locals {
   }
   microservice_lab_swagger_route_services = {
     "GET /q/swagger-ui/oficina-os-service"                 = "oficina-os-service"
-    "GET /q/swagger-ui/oficina-os-service/"                = "oficina-os-service"
     "GET /q/swagger-ui/oficina-os-service/{proxy+}"        = "oficina-os-service"
     "GET /q/openapi/oficina-os-service"                    = "oficina-os-service"
     "GET /q/swagger-ui/oficina-billing-service"            = "oficina-billing-service"
-    "GET /q/swagger-ui/oficina-billing-service/"           = "oficina-billing-service"
     "GET /q/swagger-ui/oficina-billing-service/{proxy+}"   = "oficina-billing-service"
     "GET /q/openapi/oficina-billing-service"               = "oficina-billing-service"
     "GET /q/swagger-ui/oficina-execution-service"          = "oficina-execution-service"
-    "GET /q/swagger-ui/oficina-execution-service/"         = "oficina-execution-service"
     "GET /q/swagger-ui/oficina-execution-service/{proxy+}" = "oficina-execution-service"
     "GET /q/openapi/oficina-execution-service"             = "oficina-execution-service"
   }
@@ -145,6 +142,11 @@ locals {
         # A assinatura HMAC do Mercado Pago inclui o x-request-id original.
         # O mapeamento específico prevalece sobre a correlação padrão do módulo.
         "overwrite:header.X-Request-Id" = "$request.header.x-request-id"
+        } : startswith(route_key, "GET /q/swagger-ui/") && !endswith(route_key, "/{proxy+}") ? {
+        # O API Gateway HTTP rejeita route keys terminadas em barra. A URL
+        # pública fica sem a barra e a integração entrega ao Quarkus o caminho
+        # canônico terminado em barra, evitando redirect para uma rota inválida.
+        "overwrite:path" = "${trimprefix(route_key, "GET ")}/"
       } : {}
     }
   } : {}
